@@ -3068,8 +3068,8 @@ function renderAsistencia(){
             <th style="padding:6px 10px;text-align:left;border-bottom:2px solid #E2E8F0"></th>
           </tr></thead>
           <tbody>${JUGADORES.filter(j=>j.activo!==false).map(j=>{
-            const sesConReg=Object.keys(ASISTENCIA).filter(n=>ASISTENCIA[n][j.id]!==undefined&&(!window.extContar||extContar(n,j.id)));
-            const asistio=sesConReg.filter(n=>ASISTENCIA[n][j.id]===true).length;
+            const sesConReg=Object.keys(ASISTENCIA).filter(n=>ASISTENCIA[n]&&ASISTENCIA[n][j.id]!==undefined&&(!window.extContar||extContar(n,j.id)));
+            const asistio=sesConReg.filter(n=>ASISTENCIA[n]&&ASISTENCIA[n][j.id]===true).length;
             const total2=sesConReg.length;
             const pct=total2>0?Math.round(asistio/total2*100):0;
             return`<tr style="border-bottom:1px solid #F1F5F9">
