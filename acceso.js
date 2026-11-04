@@ -3,7 +3,7 @@
  * Protección BÁSICA contra curiosos si te cogen el móvil. No cifra los datos: la verdadera protección es el bloqueo del móvil. */
 (function () {
   'use strict';
-  var LECTURA = !!window.ET_LECTURA;
+  var LECTURA = false;
   var K_LOCK = 'et_lock', K_PROMPT = 'et_lock_prompt', K_FAIL = 'et_lock_fail';
   var SEGUNDOS_SEGUNDO_PLANO = 60;   // vuelve a pedir la contraseña si la app estuvo >1 min en segundo plano
   var ITER = 150000, MIN_LEN = 4;

@@ -3,7 +3,6 @@
  * Si no se conecta, la app funciona exactamente igual que antes. Los datos solo viven en el Drive de cada usuario. */
 (function () {
   'use strict';
-  if (window.ET_LECTURA) return;   // modo lectura: nunca sincroniza (evita pisar tu Drive con datos de otro)
   var CLIENT_ID = '1081887031857-5e6bn1l8e8hdm94m641fuku4n9kjh8pi.apps.googleusercontent.com';
   var SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
   var FILE_NAME = 'entrenamiento_total_sync.json';
