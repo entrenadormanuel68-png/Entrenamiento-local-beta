@@ -6024,7 +6024,7 @@ async function pizSync(){
     try{etToast('🎨 Pizarras del club: '+nuevas.length+' nuevas');}catch(e){}
   }
 }
-document.addEventListener('DOMContentLoaded',()=>{setTimeout(pizSync,1200);});
+document.addEventListener('DOMContentLoaded',()=>{if(!window.ET_LECTURA)setTimeout(pizSync,1200);});   // en modo lectura no se rellena con las pizarras del club
 </script>
 <script>
 // ═══════════ INDICADOR DE ESPACIO (Biblioteca) ═══════════

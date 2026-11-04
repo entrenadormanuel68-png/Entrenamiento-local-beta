@@ -55,7 +55,7 @@
       '<div style="font-weight:800;font-size:18px;color:#1E3A5F;text-align:center">Modo solo lectura</div>' +
       '<div style="font-size:13px;color:#475569;margin-top:8px;text-align:center">Abre el archivo que te ha enviado el entrenador para ver sus datos. No podrás modificar nada y tus propios datos no se tocan.</div>' +
       '<label style="display:block;margin-top:14px;text-align:center"><span style="display:block;background:#1E3A5F;color:#fff;border-radius:10px;padding:12px;font-weight:700;cursor:pointer">📂 Elegir archivo</span>' +
-      '<input type="file" accept=".json,application/json" style="display:none"></label>' +
+      '<input type="file" style="display:none"></label>' +
       '<div class="msg" style="color:#B91C1C;font-size:13px;margin-top:10px;white-space:pre-line;text-align:center"></div>' +
       (obligatorio ? '' : '<button class="cerrar" style="margin-top:8px;width:100%;border:none;background:#F1F5F9;color:#334155;border-radius:10px;padding:10px;font-weight:600;cursor:pointer">Cancelar</button>');
     o.appendChild(c); document.body.appendChild(o);
