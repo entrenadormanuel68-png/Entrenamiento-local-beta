@@ -51,7 +51,7 @@
       '<div style="font-size:34px;text-align:center">🔒</div>' +
       '<div style="font-weight:800;font-size:18px;color:#1E3A5F;text-align:center;margin-top:4px">Entrenamiento Total</div>' +
       '<div style="font-size:13px;color:#64748B;text-align:center;margin-top:2px">Introduce tu contraseña para abrir la app</div>' +
-      '<input type="password" autocomplete="current-password" placeholder="Contraseña" style="' + INP + '">' +
+      '<input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore placeholder="Contraseña" style="-webkit-text-security:disc;' + INP + '">' +
       '<div class="msg" style="color:#B91C1C;font-size:13px;margin-top:8px;min-height:18px"></div>' +
       '<button class="entrar" style="' + BTN + 'background:#1E3A5F;color:#fff">Entrar</button>' +
       (LECTURA ? '' : '<button class="olvido" style="' + BTN + 'background:none;color:#64748B;font-weight:600;font-size:12px;margin-top:2px">He olvidado la contraseña</button>');
@@ -91,7 +91,7 @@
     var o = nodo(BASE + 'z-index:2147482000;background:rgba(15,23,42,.6)'), c = nodo(CAJA);
     c.innerHTML = '<div style="font-weight:800;font-size:17px;color:#1E3A5F"></div><div class="t" style="font-size:13px;color:#475569;margin-top:6px;white-space:pre-line"></div>';
     c.children[0].textContent = titulo; c.children[1].textContent = texto;
-    var ins = campos.map(function (ph) { var i = document.createElement('input'); i.type = 'password'; i.placeholder = ph; i.style.cssText = INP; i.autocomplete = 'new-password'; c.appendChild(i); return i; });
+    var ins = campos.map(function (ph) { var i = document.createElement('input'); i.type = 'text'; i.style.webkitTextSecurity = 'disc'; i.setAttribute('autocapitalize','off'); i.setAttribute('spellcheck','false'); i.setAttribute('data-lpignore','true'); i.setAttribute('data-1p-ignore',''); i.placeholder = ph; i.style.cssText = INP + ';-webkit-text-security:disc'; i.autocomplete = 'off'; c.appendChild(i); return i; });
     var msg = nodo('color:#B91C1C;font-size:13px;margin-top:8px;min-height:18px'); c.appendChild(msg);
     var ok = document.createElement('button'); ok.textContent = textoOk; ok.style.cssText = BTN + 'background:#1E3A5F;color:#fff';
     var no = document.createElement('button'); no.textContent = textoNo || 'Cancelar'; no.style.cssText = BTN + 'background:#F1F5F9;color:#334155';
