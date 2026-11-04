@@ -973,7 +973,7 @@ body.role-coach .manager-only-el{opacity:0.3;pointer-events:none;cursor:not-allo
 </script>
 <!-- Firebase eliminado — versión local (localStorage) -->
 <!-- Almacenamiento ampliado: localForage 1.10.0 (IndexedDB) + EtStore -->
-<script>window.ET_STORE_DB='entrenamiento_total_beta';</script>
+<script>window.ET_LECTURA=/[?&]lectura=1(&|$)/.test(location.search);window.ET_STORE_DB='entrenamiento_total_beta'+(window.ET_LECTURA?'_lectura':'');</script>
 <script>/*!
     localForage -- Offline Storage, Improved
     Version 1.10.0
@@ -1021,6 +1021,7 @@ body.role-coach .manager-only-el{opacity:0.3;pointer-events:none;cursor:not-allo
 
   function lsClavesDatos() {
     var out = [];
+    if (global.ET_LECTURA) return out;   // modo lectura: base aparte, nunca hereda datos del localStorage del entrenador
     for (var i = 0; i < localStorage.length; i++) {
       var k = localStorage.key(i);
       if (esDato(k)) out.push(k);
@@ -8833,5 +8834,7 @@ try{window.pizRender();}catch(e){}
 })();
 </script>
 <script src="sync-drive.js" defer></script>
+<script src="acceso.js" defer></script>
+<script src="lectura.js" defer></script>
 </body>
 </html>
