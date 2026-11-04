@@ -44,7 +44,7 @@
   // ───────── pantalla de bloqueo ─────────
   function bloquear() {
     var c = cfg();
-    if (!c || overlay || !disponible()) return;
+    if (LECTURA || !c || overlay || !disponible()) return;
     overlay = nodo(BASE + 'z-index:2147483000;background:linear-gradient(135deg,#0F2846,#1E3A5F)');
     var caja = nodo(CAJA);
     caja.innerHTML =
