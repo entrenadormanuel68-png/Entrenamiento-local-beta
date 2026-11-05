@@ -64,7 +64,7 @@
       ok.disabled = true;
       verificar(inp.value, c).then(function (bien) {
         ok.disabled = false;
-        if (bien) { lsDel(K_FAIL); overlay.remove(); overlay = null; return; }
+        if (bien) { lsDel(K_FAIL); overlay.remove(); overlay = null; try { document.dispatchEvent(new Event('et-desbloqueado')); } catch (e) {} return; }
         fallo(); inp.value = ''; inp.focus();
         var w2 = espera(); msg.textContent = w2 > 0 ? 'Demasiados intentos. Espera ' + w2 + ' s.' : 'Contraseña incorrecta';
       }).catch(function () { ok.disabled = false; msg.textContent = 'No se pudo comprobar la contraseña'; });
@@ -198,5 +198,5 @@
   });
   var listo = window.EtStore && window.EtStore.ready ? window.EtStore.ready : Promise.resolve();
   Promise.resolve(listo).then(function () { setTimeout(iniciar, 1200); });
-  window.EtAcceso = { bloquear: bloquear, _cfg: cfg };
+  window.EtAcceso = { bloquear: bloquear, bloqueada: function () { return !!overlay; }, _cfg: cfg };
 })();

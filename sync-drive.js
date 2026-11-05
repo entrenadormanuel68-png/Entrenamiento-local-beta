@@ -130,6 +130,8 @@
   // opts.manual: pulsado por el usuario (puede abrir la ventana de Google y descargar sin preguntar si no hay conflicto)
   function sincronizar(opts) {
     opts = opts || {};
+    // Con la pantalla de contraseña puesta no se sincroniza solo: la ventana de Google interrumpía al escribir. Se sincroniza justo al desbloquear.
+    if (!opts.manual && window.EtAcceso && window.EtAcceso.bloqueada && window.EtAcceso.bloqueada()) return Promise.resolve();
     if (busy) return Promise.resolve();
     if (!window.backupConstruir || !window.EtStore) return Promise.resolve();
     busy = true; setEstado('Sincronizando…', 'info');
@@ -219,6 +221,7 @@
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState === 'hidden' && cfg().activa && token) sincronizar({ manual: false });
     });
+    document.addEventListener('et-desbloqueado', function () { if (cfg().activa) setTimeout(function () { sincronizar({ manual: false }); }, 800); });
     if (c.activa) { arrancarAuto(); setTimeout(function () { sincronizar({ manual: false }); }, 3000); }
   }
 
