@@ -3419,10 +3419,10 @@ function saveEditEj(i){
 // RESET
 // ═══════════════════════════════════════════════════════════════
 function resetAll(){
-  if(!confirm("⚠️ ¿Seguro que quieres borrar TODOS los datos?\n\nSe eliminará: club, plantilla, partidos, sesiones y evaluaciones.\n\nEsta acción no se puede deshacer."))return;
+  if(!confirm("⚠️ ¿Seguro que quieres borrar TODOS los datos?\n\nSe eliminará: club, plantilla, partidos, sesiones y evaluaciones.\n\nEsta acción no se puede deshacer."+(window.EtSync&&EtSync.activa&&EtSync.activa()?"\n\n☁️ Google Drive se desconectará en este dispositivo para no vaciar tu copia. Tu copia en Drive NO se borra y podrás recuperarla volviendo a conectar.":"")))return;
   if(!confirm("⚠️ SEGUNDA CONFIRMACIÓN\n\n¿Confirmas que deseas resetear la app para una nueva temporada?"))return;
   // versión local: solo localStorage
-  else{['bib_club','bib_jugadores','bib_sesiones','bib_partidos','bib_biblioteca','bib_auth','pizarra_boards'].forEach(k=>EtStore.removeItem(k));EtStore.flush().then(function(){location.reload();});}
+  else{try{if(window.EtSync&&EtSync.antesDeResetear)EtSync.antesDeResetear();}catch(e){}['bib_club','bib_jugadores','bib_sesiones','bib_partidos','bib_biblioteca','bib_auth','pizarra_boards'].forEach(k=>EtStore.removeItem(k));EtStore.flush().then(function(){location.reload();});}
 }
 
 // ═══════════════════════════════════════════════════════════════
