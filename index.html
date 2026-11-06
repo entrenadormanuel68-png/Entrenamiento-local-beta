@@ -1727,7 +1727,7 @@ function renderResumen(){
   const minSel=document.getElementById('res-min-cuarto');
   const minPorCuarto=minSel?+minSel.value:15;
   // Calcular stats por jugador
-  const statsJ=JUGADORES.map(j=>{
+  const _statsAll=JUGADORES.map(j=>{
     let cuartos=0;
     const posicionesCount={};
     PARTIDOS.forEach(p=>{
@@ -1745,7 +1745,12 @@ function renderResumen(){
     const minutos=cuartos*minPorCuarto;
     const posTop=Object.entries(posicionesCount).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([p,n])=>`${p}(${n})`).join(", ");
     return{...j,cuartos,minutos,posTop};
-  }).filter(j=>j.cuartos>0).sort((a,b)=>b.cuartos-a.cuartos);
+  });
+  const _hayAl=_statsAll.some(j=>j.cuartos>0);
+  const statsJ=_statsAll.filter(j=>j.cuartos>0||(_hayAl&&j.activo!==false)).sort((a,b)=>b.cuartos-a.cuartos);
+  const _actJ=statsJ.filter(j=>j.activo!==false);
+  const _mediaC=_actJ.length?_actJ.reduce((a,j)=>a+j.cuartos,0)/_actJ.length:0;
+  statsJ.forEach(j=>{j.sem=(j.cuartos===0||(_mediaC&&j.cuartos<_mediaC*0.5))?'#DC2626':((_mediaC&&j.cuartos<_mediaC*0.8)?'#F97316':'#16A34A');});
 
   if(statsJ.length===0){
     document.getElementById("res-minutos").innerHTML=`<p style="color:#94A3B8;font-size:12px;text-align:center;padding:20px">Sin datos de alineación registrados aún</p>`;
@@ -1766,17 +1771,18 @@ function renderResumen(){
           return`<tr style="border-bottom:1px solid #F1F5F9;background:${i%2===0?'white':'#FAFAFA'}">
             <td style="padding:6px 8px;font-weight:600">${j.dorsal} ${j.nombre}</td>
             <td style="padding:6px 8px;color:#64748B;font-size:11px">${j.posicion}</td>
-            <td style="padding:6px 8px;text-align:center;font-weight:800;color:#1E3A5F">${j.cuartos}</td>
-            <td style="padding:6px 8px;text-align:center;font-weight:700;color:#16A34A">${j.minutos}'</td>
+            <td style="padding:6px 8px;text-align:center;font-weight:800;color:${j.cuartos===0?'#DC2626':'#1E3A5F'}">${j.cuartos}</td>
+            <td style="padding:6px 8px;text-align:center;font-weight:700;color:${j.cuartos===0?'#DC2626':'#16A34A'}">${j.minutos}'</td>
             <td style="padding:6px 8px;color:#64748B;font-size:10px">${j.posTop||'—'}</td>
             <td style="padding:6px 4px">
               <div style="background:#E2E8F0;border-radius:4px;height:8px;min-width:60px">
-                <div style="background:#1E3A5F;height:8px;border-radius:4px;width:${pct}%"></div>
+                <div style="background:${j.sem};height:8px;border-radius:4px;width:${pct}%"></div>
               </div>
             </td>
           </tr>`;
         }).join("")}</tbody>
-      </table>`;
+      </table>
+      <div style="font-size:10px;color:#94A3B8;margin-top:6px">Barra: verde desde el 80% de la media del equipo (${_mediaC.toFixed(1)} cuartos), naranja entre el 50% y el 80%, roja por debajo o sin jugar.</div>`;
   }
 
   // ── ASISTENCIA POR JUGADOR ──
@@ -1792,7 +1798,7 @@ function renderResumen(){
       const _dg=window.extDesglose?extDesglose(j,sesRealizadas):{just:0,les:0,lesTxt:''};
       return{...j,asistio,falta,inj:Math.max(0,falta-_dg.just-_dg.les),pct,totalJ:_sj.length,just:_dg.just,les:_dg.lesTxt,mot:(window.extTextoMot?extTextoMot(j,sesRealizadas):"")};
     }).sort((a,b)=>b.asistio-a.asistio);
-    document.getElementById("res-asistencia").innerHTML=`
+    document.getElementById("res-asistencia").innerHTML=`${window.extAvisosAsist?extAvisosAsist(statsAsist,sesRealizadas):''}
       <table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead><tr style="background:#F8FAFC">
           <th style="padding:6px 8px;text-align:left;font-weight:700;color:#64748B;border-bottom:2px solid #E2E8F0">Jugador</th>
@@ -2320,6 +2326,7 @@ function renderPartidoDetalle(){
       return`<button onclick="setPartidoTab('${t2}')" style="padding:8px 15px;border:none;background:none;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;border-bottom:2px solid ${act?"#F97316":"transparent"};color:${act?"#F97316":"#64748B"}">${l}</button>`;
     }).join("")}
   </div>`;
+  html+=window.extAvisoCuartos?extAvisoCuartos(p):'';
 
   if(partidoTab==="datos"){
     html+=`<div class="g2">
@@ -7706,6 +7713,54 @@ window.extDesglose=function(j,list){
   var a=altaDe(j.id),nj=0,nl=0;
   list.forEach(function(s){if(s.num<a)return;var m=motivoDe(s.num,j.id);if(m==='J')nj++;else if(m==='L')nl++;});
   return {just:nj,les:nl,lesTxt:nl?nl+(nl===1?' lesión':' lesiones'):''};
+};
+/* ── Control de minutos: mínimo de cuartos por partido (norma 2026/27) ── */
+window.EXT_MIN_CUARTOS=2;
+window.extAvisoCuartos=function(p){
+  try{
+    if(!(partidoTab==="periodo"||partidoTab==="pt"||partidoTab==="conv"))return'';
+    var pers=toArr(p.periodos);if(!pers.length)return'';
+    var tiene=function(pe){var a=(pe&&pe.alineacion)||{};return Object.keys(a).some(function(k){return a[k]!==''&&a[k]!=null;});};
+    var asign=pers.filter(tiene).length;
+    if(!asign)return'';
+    var quedan=pers.length-asign,min=window.EXT_MIN_CUARTOS;
+    var conv={};toArr(p.convocados).forEach(function(x){if(x!==''&&x!=null)conv[String(x)]=1;});
+    var ya=[],aun=[];
+    JUGADORES.forEach(function(j){
+      if(j.activo===false||!conv[String(j.id)])return;
+      var c=pers.filter(function(pe){var a=(pe&&pe.alineacion)||{};return Object.keys(a).some(function(k){return String(a[k])===String(j.id);});}).length;
+      if(c<min){(c+quedan<min?ya:aun).push(esc(j.nombre)+' ('+c+')');}
+    });
+    if(!ya.length&&!aun.length)return'';
+    var rojo=ya.length>0;
+    return '<div style="margin:0 0 12px;padding:8px 12px;border-radius:8px;font-size:12px;line-height:1.5;background:'+(rojo?'#FEE2E2':'#FEF3C7')+';border:1px solid '+(rojo?'#FECACA':'#FDE68A')+';color:'+(rojo?'#991B1B':'#92400E')+'"><b>⚠️ Mínimo '+min+' cuartos por jugador</b>'
+      +(ya.length?'<div>No llegan: '+ya.join(', ')+'</div>':'')
+      +(aun.length?'<div>Aún pueden llegar ('+quedan+' cuarto'+(quedan!==1?'s':'')+' por asignar): '+aun.join(', ')+'</div>':'')+'</div>';
+  }catch(e){return'';}
+};
+/* ── Alertas de asistencia: 3 faltas seguidas sin justificar, o asistencia real < 70% ── */
+window.EXT_ALERTA_RACHA=3;window.EXT_ALERTA_PCT=70;window.EXT_ALERTA_MINSES=5;
+window.extRachaFaltas=function(j,list){
+  var a=altaDe(j.id),r=0;
+  var l=list.filter(function(s){return s.num>=a;}).sort(function(x,y){return x.num-y.num;});
+  for(var i=l.length-1;i>=0;i--){
+    var e=ASISTENCIA[l[i].num]&&ASISTENCIA[l[i].num][j.id];
+    if(e===false&&!motivoDe(l[i].num,j.id))r++;else break;
+  }
+  return r;
+};
+window.extAvisosAsist=function(stats,list){
+  try{
+    var out=[];
+    stats.forEach(function(j){
+      var r=extRachaFaltas(j,list),m=[];
+      if(r>=window.EXT_ALERTA_RACHA)m.push(r+' faltas seguidas sin justificar');
+      if(j.totalJ>=window.EXT_ALERTA_MINSES&&j.pct<window.EXT_ALERTA_PCT)m.push('asistencia real '+j.pct+'%');
+      if(m.length)out.push('<div>• <b>'+esc(j.dorsal+' '+j.nombre)+'</b>: '+m.join(' · ')+'</div>');
+    });
+    if(!out.length)return'';
+    return '<div style="margin:0 0 12px;padding:8px 12px;border-radius:8px;font-size:12px;line-height:1.6;background:#FEF3C7;border:1px solid #FDE68A;color:#92400E"><b>⚠️ Atención: asistencia</b>'+out.join('')+'</div>';
+  }catch(e){return'';}
 };
 window.extEtiqueta=function(n,id){var m=motivoDe(n,id);return m==='J'?'Falta justificada':(m==='L'?'Lesión':'Ausente');};
 window.extMotivoTxt=function(n,id){var m=motivoDe(n,id);return m==='J'?' (justificada)':(m==='L'?' (lesión)':'');};
