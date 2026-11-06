@@ -2577,7 +2577,7 @@ function renderPartidoDetalle(){
   }
 
   if(partidoTab==="hoja"){html+=hojaHTML(p);}
-  if(partidoTab==="val"){html+=window.valHTML(p);}
+  if(partidoTab==="val"){html+=window.cierreHTML?cierreHTML(p):"";html+=window.valHTML(p);}
 
   det.innerHTML=html;
   if(partidoTab==="hoja")hojaMostrar(p.id);
@@ -2790,6 +2790,7 @@ function renderSesionDetalle(){
       <button class="btn btn-ghost btn-sm" onclick="exportSesionCSV(${s.num})" title="Exportar sesión a Excel/CSV">📥 CSV</button>
       <button onclick="toggleSesComp2(${s.num})" style="padding:5px 13px;border:none;border-radius:7px;cursor:pointer;font-weight:600;font-size:12px;background:${s.completada?"#16A34A":"#E2E8F0"};color:${s.completada?"white":"#374151"}">${s.completada?"✅ Completada":"Marcar completada"}</button>
     </div>
+    ${window.cierreAviso?cierreAviso(s):""}
     <div style="background:${fi.bg};border:1px solid ${fi.c}30;border-radius:12px;padding:16px;margin-bottom:14px">
       <div style="display:flex;gap:7px;margin-bottom:7px;flex-wrap:wrap">
         <span style="background:${fi.bg};color:${fi.c};border:1px solid ${fi.c}40;border-radius:4px;font-size:10px;font-weight:700;padding:2px 7px">F${s.fase}: ${fi.n}</span>
@@ -8899,5 +8900,71 @@ try{window.pizRender();}catch(e){}
 </script>
 <script src="sync-drive.js" defer></script>
 <script src="acceso.js" defer></script>
+
+<script id="ext-cierre">
+/* ext-cierre — cierre del partido (qué funcionó / qué mejorar / foco) y aviso en la sesión siguiente. Aditivo. */
+(function(){
+  'use strict';
+  var MAXDIAS=10;
+  function esc2(t){return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function cz(p){var c=p&&p.cierre;return {ok:(c&&c.ok)||'',mej:(c&&c.mej)||'',foco:(c&&c.foco)||''};}
+  function tiene(p){var c=cz(p);return !!(c.ok.trim()||c.mej.trim()||c.foco.trim());}
+  var CAMPOS=[['ok','✅ Qué funcionó','Ej: salida de balón desde el portero, presión tras pérdida…','#F0FDF4','#BBF7D0','#166534'],
+              ['mej','🔧 Qué mejorar','Ej: vigilancias en el área, ocupar bien los carriles…','#FEF2F2','#FECACA','#991B1B'],
+              ['foco','🎯 Foco para la próxima sesión','Ej: 2 contra 1 en banda, finalizar a un toque…','#FFF7ED','#FED7AA','#C2410C']];
+  window.cierreHTML=function(p){
+    var c=cz(p);
+    var h='<div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:14px;margin-bottom:14px">'
+      +'<div style="font-size:12px;font-weight:800;color:#1E3A5F;margin-bottom:4px">🏁 Cierre del partido</div>'
+      +'<div style="font-size:11px;color:#94A3B8;margin-bottom:10px">Tres líneas al acabar. Aparecerán como aviso al abrir las sesiones de después del partido.</div>';
+    CAMPOS.forEach(function(k){
+      h+='<div style="background:'+k[3]+';border:1px solid '+k[4]+';border-radius:9px;padding:9px 11px;margin-bottom:8px">'
+        +'<div style="font-size:10px;font-weight:700;color:'+k[5]+';text-transform:uppercase;margin-bottom:4px">'+k[1]+'</div>'
+        +'<textarea rows="2" placeholder="'+esc2(k[2])+'" oninput="cierreSet('+p.id+',\''+k[0]+'\',this.value)" style="width:100%;box-sizing:border-box;border:1px solid '+k[4]+';border-radius:6px;padding:6px 8px;font:inherit;font-size:13px;background:#fff;resize:vertical">'+esc2(c[k[0]])+'</textarea></div>';
+    });
+    return h+'</div>';
+  };
+  window.cierreSet=function(id,k,v){
+    var p=PARTIDOS.find(function(x){return x.id===id;});if(!p)return;
+    p.cierre=Object.assign({ok:'',mej:'',foco:''},p.cierre||{});p.cierre[k]=v;
+    window._isTyping=true;clearTimeout(window._typingTimer);window._typingTimer=setTimeout(function(){window._isTyping=false;},1500);
+    save('partidos',PARTIDOS);
+  };
+  /* partido con cierre más reciente anterior a la fecha de la sesión (máx. MAXDIAS días) */
+  function partidoPrevio(s){
+    if(!s||!s.fechaReal)return null;
+    var fs=s.fechaReal,lim=new Date(fs+'T00:00:00');lim.setDate(lim.getDate()-MAXDIAS);
+    var limIso=lim.getFullYear()+'-'+String(lim.getMonth()+1).padStart(2,'0')+'-'+String(lim.getDate()).padStart(2,'0');
+    var c=PARTIDOS.filter(function(p){return p.fecha&&p.fecha<=fs&&p.fecha>=limIso&&tiene(p);});
+    c.sort(function(a,b){return a.fecha<b.fecha?1:a.fecha>b.fecha?-1:0;});
+    return c[0]||null;
+  }
+  window.cierreAviso=function(s){
+    var p=partidoPrevio(s);if(!p)return '';
+    var c=cz(p),t='';
+    try{t=getPartidoTotales(p);}catch(e){}
+    var res=p.resultadoFinal&&p.resultadoFinal!=='-'?p.resultadoFinal:'';
+    var h='<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:12px 14px;margin-bottom:14px">'
+      +'<div style="font-size:12px;font-weight:800;color:#1E3A5F;margin-bottom:6px">🏁 Del último partido · vs '+esc2(p.rival||'Rival')+' ('+esc2(typeof fmtFecha==='function'?fmtFecha(p.fecha):p.fecha)+')'+(res?' · '+esc2(res):'')+'</div>';
+    CAMPOS.forEach(function(k){
+      var v=c[k[0]].trim();if(!v)return;
+      h+='<div style="font-size:12px;color:'+k[5]+';margin:3px 0"><b>'+k[1].replace(/^\S+\s/,'')+':</b> '+esc2(v).replace(/\n/g,'<br>')+'</div>';
+    });
+    if(c.foco.trim()){
+      var ya=(s.notas||'').indexOf('🎯 Foco vs '+(p.rival||'Rival'))>=0;
+      h+=ya?'<div style="font-size:11px;color:#16A34A;margin-top:6px">✔ Foco ya copiado a las notas de la sesión</div>'
+           :'<button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="cierreANotas('+s.num+','+p.id+')">➕ Copiar el foco a las notas de la sesión</button>';
+    }
+    return h+'</div>';
+  };
+  window.cierreANotas=function(num,pid){
+    var s=SESIONES.find(function(x){return x.num===num;}),p=PARTIDOS.find(function(x){return x.id===pid;});
+    if(!s||!p)return;
+    var linea='🎯 Foco vs '+(p.rival||'Rival')+': '+cz(p).foco.trim();
+    s.notas=(s.notas?s.notas.replace(/\s+$/,'')+'\n':'')+linea;
+    save('sesiones',SESIONES);renderSesionDetalle();
+  };
+})();
+</script>
 </body>
 </html>
