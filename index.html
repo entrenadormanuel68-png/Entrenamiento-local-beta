@@ -1790,7 +1790,7 @@ function renderResumen(){
       const falta=_sj.length-asistio;
       const pct=_sj.length>0?Math.round(asistio/_sj.length*100):0;
       const _dg=window.extDesglose?extDesglose(j,sesRealizadas):{just:0,les:0,lesTxt:''};
-      return{...j,asistio,falta,pct,totalJ:_sj.length,just:_dg.just,les:_dg.lesTxt,mot:(window.extTextoMot?extTextoMot(j,sesRealizadas):"")};
+      return{...j,asistio,falta,inj:Math.max(0,falta-_dg.just-_dg.les),pct,totalJ:_sj.length,just:_dg.just,les:_dg.lesTxt,mot:(window.extTextoMot?extTextoMot(j,sesRealizadas):"")};
     }).sort((a,b)=>b.asistio-a.asistio);
     document.getElementById("res-asistencia").innerHTML=`
       <table style="width:100%;border-collapse:collapse;font-size:12px">
@@ -1808,7 +1808,7 @@ function renderResumen(){
             <td style="padding:6px 8px;font-weight:600">${j.dorsal} ${j.nombre}${j.les?'<div style="font-size:10px;font-weight:600;color:#64748B">'+j.les+'</div>':''}</td>
             <td style="padding:6px 8px;text-align:center;font-weight:800;color:#1E3A5F">${j.asistio}/${j.totalJ}</td>
             <td style="padding:6px 8px;text-align:center;font-weight:700;color:#D97706">${j.just}</td>
-            <td style="padding:6px 8px;text-align:center;font-weight:700;color:#DC2626">${j.falta}</td>
+            <td style="padding:6px 8px;text-align:center;font-weight:700;color:#DC2626">${j.inj}</td>
             <td style="padding:6px 8px;text-align:center;font-weight:800;color:${color}">${j.pct}%</td>
             <td style="padding:6px 4px">
               <div style="background:#E2E8F0;border-radius:4px;height:8px;min-width:60px">
@@ -2951,7 +2951,7 @@ function renderJugadorDetalle(){
         ${totalSesJ>0?`<div style="background:rgba(255,255,255,0.1);border-radius:8px;padding:8px 12px;text-align:center">
           <div style="font-size:11px;color:#93C5FD;margin-bottom:4px">📋 Asistencia</div>
           <div style="font-size:18px;font-weight:800;color:${colorAsistJ}">${asistioJ}/${totalSesJ}</div>
-          <div style="font-size:10px;color:${colorAsistJ}">${pctAsistJ}% · ${faltasJ} falta${faltasJ!==1?'s':''}${window.extTextoMot&&extTextoMot(j,sesRealizadasJ)?' · '+extTextoMot(j,sesRealizadasJ):''}</div>
+          <div style="font-size:10px;color:${colorAsistJ}">${pctAsistJ}% · ${faltasJ} falta${faltasJ!==1?'s':''}${window.extTextoMot&&extTextoMot(j,sesRealizadasJ)?' ('+extTextoMot(j,sesRealizadasJ)+')':''}</div>
         </div>`:''}
       </div>
     </div>
@@ -4184,14 +4184,14 @@ function asistenciaResumenWA(){
     const falta=_sj.length-asistio;
     const pct=_sj.length>0?Math.round(asistio/_sj.length*100):0;
     const _dg=window.extDesglose?extDesglose(j,sesRealizadas):{just:0,les:0,lesTxt:''};
-    return{...j,asistio,falta,pct,totalJ:_sj.length,just:_dg.just,les:_dg.lesTxt,mot:(window.extTextoMot?extTextoMot(j,sesRealizadas):"")};
+    return{...j,asistio,falta,inj:Math.max(0,falta-_dg.just-_dg.les),pct,totalJ:_sj.length,just:_dg.just,les:_dg.lesTxt,mot:(window.extTextoMot?extTextoMot(j,sesRealizadas):"")};
   }).sort((a,b)=>b.asistio-a.asistio);
   let txt=`📋 *RESUMEN DE ASISTENCIA — ${CLUB.nombre||'Equipo'}*\n`;
   txt+=`📊 Total entrenamientos: ${totalSes}\n`;
   txt+=`━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
   stats.forEach(j=>{
     const emoji=j.pct>=90?'🟢':j.pct>=70?'🟡':'🔴';
-    txt+=`${emoji} #${j.dorsal} ${j.nombre}: ${j.asistio}/${j.totalJ} (${j.pct}%) · 📝 ${j.just} justif. · ❌ ${j.falta} injust.${j.les?" · "+j.les:""}`;
+    txt+=`${emoji} #${j.dorsal} ${j.nombre}: ${j.asistio}/${j.totalJ} (${j.pct}%) · 📝 ${j.just} justif. · ❌ ${j.inj} injust.${j.les?" · "+j.les:""}`;
     txt+=`\n`;
   });
   const mediaGlobal=Math.round(stats.reduce((s,j)=>s+j.pct,0)/(stats.length||1));
@@ -7690,8 +7690,9 @@ function limpiaMotSesion(n){
   Object.keys(MOT[n]).forEach(function(id){if(d)d.ref(root()+'/'+KEYM+'/'+n+'/'+id).set(null).catch(function(e){warn('motivo',e);});});
   delete MOT[n];saveMot();
 }
-/* ¿cuenta esa sesión para el porcentaje de ese jugador? (desde su alta y sin justificar/lesión) */
-function contar(n,id){return +n>=altaDe(id)&&!motivoDe(n,id);}
+/* ¿cuenta esa sesión para el porcentaje de ese jugador? (desde su alta; las justificadas y lesiones
+   también cuentan: el % es la asistencia real) */
+function contar(n,id){return +n>=altaDe(id);}
 window.extContar=contar;
 window.extMotivoDe=motivoDe;
 window.extSesAlta=function(j,list){return list.filter(function(s){return contar(s.num,j.id);});};
@@ -8126,7 +8127,7 @@ function statsJugador(j,tipo){
   var mot=window.extTextoMot?extTextoMot(j,sr):'';
   var altaN=(window.extAltaDe?extAltaDe(j.id):null);
   var dg=window.extDesglose?extDesglose(j,sr):{just:0,les:0,lesTxt:''};
-  var o={j:j,asis:asis,total:lista.length,pct:lista.length?Math.round(asis/lista.length*100):0,mot:mot,just:dg.just,inj:lista.length-asis,lesTxt:dg.lesTxt,partidos:[],cuartos:0,goles:0,propias:0,val:{},valN:0,valMedia:null};
+  var o={j:j,asis:asis,total:lista.length,pct:lista.length?Math.round(asis/lista.length*100):0,mot:mot,just:dg.just,inj:Math.max(0,lista.length-asis-dg.just-dg.les),lesTxt:dg.lesTxt,partidos:[],cuartos:0,goles:0,propias:0,val:{},valN:0,valMedia:null};
   var crit=['col','int','tec','tac','act'],acc={};crit.forEach(function(k){acc[k]=[];});
   partidosJugados(tipo).forEach(function(p){
     var q=0,g=0,pr=0,vs=[];
@@ -8293,7 +8294,7 @@ function dibujaJugador(doc,j,opt){
   doc.h2('Asistencia a entrenamientos');
   doc.p('Ha asistido a '+s.asis+' de '+s.total+' sesiones'+(s.total?' ('+s.pct+'%)':'')+' desde su incorporación.');
   doc.bar('Asistencia',s.pct,100,s.pct+'%');
-  doc.p('Faltas: '+s.just+' justificada'+(s.just!==1?'s':'')+' · '+s.inj+' injustificada'+(s.inj!==1?'s':'')+(s.lesTxt?' · '+s.lesTxt:'')+'. Las justificadas y las lesiones no cuentan en el porcentaje.',{size:22,color:C.mut});
+  doc.p('Faltas: '+s.just+' justificada'+(s.just!==1?'s':'')+' · '+s.inj+' injustificada'+(s.inj!==1?'s':'')+(s.lesTxt?' · '+s.lesTxt:'')+'. El porcentaje es la asistencia real: cuentan también las justificadas y las lesiones.',{size:22,color:C.mut});
   doc.h2('Partidos');
   if(!s.partidos.length)doc.p('Todavía no hay partidos con minutos registrados.',{color:C.mut});
   else{
@@ -8360,7 +8361,7 @@ window.extInformeGrupo=async function(opt){
   d.h2('Asistencia a entrenamientos');
   d.tabla([{t:'Jugador',w:3},{t:'Asistió',w:1.3,a:'c'},{t:'Justif.',w:1.1,a:'c'},{t:'Injust.',w:1.1,a:'c'},{t:'%',w:.9,a:'c'},{t:'Lesiones',w:1.3,a:'c'}],
     st.slice().sort(function(a,b){return b.pct-a.pct;}).map(function(s){return [nomJ(s.j),s.asis+'/'+s.total,String(s.just),String(s.inj),{t:s.total?s.pct+'%':'–',b:true,c:s.pct>=80?C.ok:(s.pct>=60?C.warn:C.bad)},s.lesTxt||'–'];}));
-  d.p('Cada jugador cuenta desde su incorporación. Faltas justificadas y lesiones no penalizan.',{size:19,color:C.mut});
+  d.p('Cada jugador cuenta desde su incorporación. El % es la asistencia real: también cuentan las faltas justificadas y las lesiones.',{size:19,color:C.mut});
   if(opt.gc&&window.extPorteros){
     var r=extPorteros(tipo);
     d.h2('Porteros: goles encajados');
