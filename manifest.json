@@ -1,6 +1,6 @@
 {
-  "name": "Entrenamiento Total",
-  "short_name": "E.P Club",
+  "name": "mp-Beta (pruebas)",
+  "short_name": "mp-Beta",
   "description": "Gestión de entrenamientos y partidos de fútbol base",
   "lang": "es",
   "start_url": "./index.html",

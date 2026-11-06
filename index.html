@@ -7,10 +7,10 @@
 <meta name="theme-color" content="#1E3A5F">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="E.P Club">
+<meta name="apple-mobile-web-app-title" content="mp-Beta">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<title>Entrenamiento Total – Local</title>
+<title>mp-Beta – Entrenamiento Total (pruebas)</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 /* Bloquear selección de texto y menú contextual en TODO el documento */
@@ -7758,7 +7758,7 @@ window.extAvisosAsist=function(stats,list){
       if(j.totalJ>=window.EXT_ALERTA_MINSES&&j.pct<window.EXT_ALERTA_PCT)m.push('asistencia real '+j.pct+'%');
       if(m.length)out.push('<div>• <b>'+esc(j.dorsal+' '+j.nombre)+'</b>: '+m.join(' · ')+'</div>');
     });
-    if(!out.length)return'';
+    if(!out.length)return '<div style="margin:0 0 10px;font-size:11px;font-weight:600;color:#15803D">✅ Sin alertas de asistencia</div>';
     return '<div style="margin:0 0 12px;padding:8px 12px;border-radius:8px;font-size:12px;line-height:1.6;background:#FEF3C7;border:1px solid #FDE68A;color:#92400E"><b>⚠️ Atención: asistencia</b>'+out.join('')+'</div>';
   }catch(e){return'';}
 };
