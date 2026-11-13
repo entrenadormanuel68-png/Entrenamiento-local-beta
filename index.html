@@ -2673,7 +2673,7 @@ function chgGolesRival(pid,pi,d){
 function convocatoriaWA(pid){
   const p=PARTIDOS.find(x=>x.id===pid);if(!p)return;
   const conv=p.convocados.map(id=>JUGADORES.find(j=>j.id===id)).filter(Boolean);
-  const noConv=JUGADORES.filter(j=>!p.convocados.includes(j.id));
+  const noConv=JUGADORES.filter(j=>j.activo!==false&&!p.convocados.includes(j.id));
 
   // Format date nicely
   let fechaFmt=p.fecha||"—";
@@ -4051,7 +4051,7 @@ function exportPartidoCSV(pid){
   const suplSet=new Set(toArr(p.suplentes).map(id=>+id));
   const convIds=toArr(p.convocados).map(id=>+id);
   // Jugadores NO convocados
-  const noConvIds=JUGADORES.map(j=>j.id).filter(id=>!convIds.includes(id));
+  const noConvIds=JUGADORES.filter(j=>j.activo!==false).map(j=>j.id).filter(id=>!convIds.includes(id));
   const rows=[
     ['Club',CLUB.nombre],['Rival',p.rival||''],['Fecha',fmtFecha(p.fecha)],['Hora',p.hora||''],
     ['Local/Visitante',p.local?'Local':'Visitante'],['Tipo',p.tipo||''],
@@ -4739,18 +4739,19 @@ function abrirPickerBib(modo,n){
 }
 function renderPickerBib(){
   const el=document.getElementById('picker-bib-list');if(!el)return;
-  const q=(document.getElementById('picker-bib-q')?.value||'').toLowerCase().trim();
+  const nrm=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const qT=nrm(document.getElementById('picker-bib-q')?.value||'').split(/\s+/).filter(Boolean);
   const cat=document.getElementById('picker-bib-cat')?.value||'';
   const res=[];
   BIBLIOTECA.forEach((e,i)=>{
     if(!e||!e.nombre)return;
     if(cat&&e.categoria!==cat)return;
-    if(q&&!((e.nombre||'').toLowerCase().includes(q)||(e.descripcion||'').toLowerCase().includes(q)))return;
+    if(qT.length){const pajar=nrm([e.id,e.nombre,e.descripcion].join(' '));if(!qT.every(w=>pajar.includes(w)))return;}
     res.push([e,i]);
   });
   if(!res.length){el.innerHTML='<div style="text-align:center;color:#94A3B8;padding:24px;font-size:13px">Sin resultados</div>';return;}
   el.innerHTML=res.slice(0,100).map(([e,i])=>`<div onclick="elegirDeBib(${i})" style="border:1px solid #E2E8F0;border-radius:9px;padding:9px 11px;margin-bottom:7px;cursor:pointer;background:white">
-    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="font-weight:700;font-size:13px;color:#1e293b">${esc(e.nombre)}${e.dibujo?' 🎨':''}</span><span style="font-size:10px;color:#64748B;background:#F1F5F9;border-radius:4px;padding:1px 6px;white-space:nowrap">${esc(e.categoria||'')}</span></div>
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="font-weight:700;font-size:13px;color:#1e293b">${esc(e.nombre)}${e.dibujo?' 🎨':''}${e.id?` <span style="font-weight:600;font-size:10px;color:#94A3B8;font-family:monospace">${esc(e.id)}</span>`:''}</span><span style="font-size:10px;color:#64748B;background:#F1F5F9;border-radius:4px;padding:1px 6px;white-space:nowrap">${esc(e.categoria||'')}</span></div>
     <div style="font-size:11px;color:#64748B;margin-top:3px;line-height:1.4">${esc((e.descripcion||'').slice(0,140))}${(e.descripcion||'').length>140?'…':''}</div></div>`).join('')
     +(res.length>100?`<div style="text-align:center;font-size:11px;color:#94A3B8">Mostrando 100 de ${res.length}; afina la búsqueda</div>`:'');
 }
@@ -6025,11 +6026,15 @@ async function pizSync(){
     dibujos.add(_pizDib(j));
     nuevas.push({nombre:nom,fecha:(o.fecha&&!isNaN(new Date(o.fecha)))?new Date(o.fecha).toISOString():new Date().toISOString(),dibujo:j});
   });
-  try{EtStore.setItem('pizarra_sync_vistas',JSON.stringify([...vistas]));}catch(e){}
-  if(!nuevas.length)return;
+  const marcarVistas=()=>{try{EtStore.setItem('pizarra_sync_vistas',JSON.stringify([...vistas]));}catch(e){}};
+  if(!nuevas.length){marcarVistas();return;}
+  // Primero se guardan las pizarras nuevas y solo después se anotan como «vistas»: si el guardado se interrumpe
+  // (recarga, sincronización con Drive...), la próxima vez la app vuelve a intentarlo en vez de darlas por recibidas.
   const t=Date.now();
   nuevas.reverse().forEach((x,i)=>PIZ.unshift({id:t+i,nombre:x.nombre,fecha:x.fecha,dibujo:x.dibujo}));
   if(pizSave()){
+    try{if(EtStore.flush)await EtStore.flush();}catch(e){}
+    marcarVistas();
     try{pizRender();}catch(e){}
     try{etToast('🎨 Pizarras del club: '+nuevas.length+' nuevas');}catch(e){}
   }
