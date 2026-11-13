@@ -135,7 +135,7 @@ tr:hover td{background:#EFF6FF}
 .img-preview{width:100%;max-height:200px;object-fit:contain;border-radius:8px;border:1px solid #E2E8F0;margin-top:8px}
 /* FADE IN */
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.section.active{animation:fadeIn .2s ease}
+.section.active{animation:fadeIn .2s ease;padding-bottom:84px}/* hueco para el botón flotante «Campo» */
 /* LOGIN OVERLAY */
 #login-overlay{display:flex;position:fixed;inset:0;background:linear-gradient(135deg,#0F2846 0%,#1E3A5F 50%,#0F2846 100%);z-index:9999;align-items:center;justify-content:center;flex-direction:column}
 #login-box{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:36px 32px;width:90%;max-width:400px;text-align:center;backdrop-filter:blur(10px)}
@@ -1695,9 +1695,9 @@ function renderResumen(){
     fasesHtml+=`<div style="margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;margin-bottom:3px">
         <span style="font-size:12px;font-weight:600;color:${fi.c}">${fi.e} F${f}: ${fi.n}</span>
-        <span style="font-size:10px;color:#94A3B8">${fC}/${fS.length}</span>
+        <span style="font-size:11px;font-weight:600;color:#64748B">${fC}/${fS.length} · ${p2}%</span>
       </div>
-      <div class="pbar"><div class="pbar-fill" style="width:${p2}%;background:${fi.c}"></div></div>
+      <div class="pbar" style="height:8px"><div class="pbar-fill" style="width:${p2}%;background:${fi.c}"></div></div>
     </div>`;
   });
   document.getElementById("res-fases").innerHTML=fasesHtml;
@@ -1801,24 +1801,22 @@ function renderResumen(){
     document.getElementById("res-asistencia").innerHTML=`${window.extAvisosAsist?extAvisosAsist(statsAsist,sesRealizadas):''}
       <table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead><tr style="background:#F8FAFC">
-          <th style="padding:6px 8px;text-align:left;font-weight:700;color:#64748B;border-bottom:2px solid #E2E8F0">Jugador</th>
-          <th style="padding:6px 8px;text-align:center;font-weight:700;color:#64748B;border-bottom:2px solid #E2E8F0">✅ Asist.</th>
-          <th style="padding:6px 8px;text-align:center;font-weight:700;color:#64748B;border-bottom:2px solid #E2E8F0">📝 Justif.</th>
-          <th style="padding:6px 8px;text-align:center;font-weight:700;color:#64748B;border-bottom:2px solid #E2E8F0">❌ Injust.</th>
-          <th style="padding:6px 8px;text-align:center;font-weight:700;color:#64748B;border-bottom:2px solid #E2E8F0">%</th>
-          <th style="padding:6px 4px;border-bottom:2px solid #E2E8F0;min-width:80px"></th>
+          <th style="padding:6px 6px;text-align:left;font-weight:700;color:#E2E8F0;border-bottom:2px solid #E2E8F0">Jugador</th>
+          <th style="padding:6px 3px;text-align:center;font-weight:700;color:#E2E8F0;border-bottom:2px solid #E2E8F0">✅ Asist.</th>
+          <th style="padding:6px 3px;text-align:center;font-weight:700;color:#E2E8F0;border-bottom:2px solid #E2E8F0">📝 Justif.</th>
+          <th style="padding:6px 3px;text-align:center;font-weight:700;color:#E2E8F0;border-bottom:2px solid #E2E8F0">❌ Injust.</th>
+          <th style="padding:6px 3px;text-align:center;font-weight:700;color:#E2E8F0;border-bottom:2px solid #E2E8F0;min-width:60px">%</th>
         </tr></thead>
         <tbody>${statsAsist.map((j,i)=>{
           const color=j.pct>=90?'#16A34A':j.pct>=70?'#F97316':'#DC2626';
           return`<tr style="border-bottom:1px solid #F1F5F9;background:${i%2===0?'white':'#FAFAFA'}">
-            <td style="padding:6px 8px;font-weight:600">${j.dorsal} ${j.nombre}${j.les?'<div style="font-size:10px;font-weight:600;color:#64748B">'+j.les+'</div>':''}</td>
-            <td style="padding:6px 8px;text-align:center;font-weight:800;color:#1E3A5F">${j.asistio}/${j.totalJ}</td>
-            <td style="padding:6px 8px;text-align:center;font-weight:700;color:#D97706">${j.just}</td>
-            <td style="padding:6px 8px;text-align:center;font-weight:700;color:#DC2626">${j.inj}</td>
-            <td style="padding:6px 8px;text-align:center;font-weight:800;color:${color}">${j.pct}%</td>
-            <td style="padding:6px 4px">
-              <div style="background:#E2E8F0;border-radius:4px;height:8px;min-width:60px">
-                <div style="background:${color};height:8px;border-radius:4px;width:${j.pct}%"></div>
+            <td style="padding:6px 6px;font-weight:600">${j.dorsal} ${j.nombre}${j.les?'<div style="font-size:10px;font-weight:600;color:#64748B">'+j.les+'</div>':''}</td>
+            <td style="padding:6px 3px;text-align:center;font-weight:800;color:#1E3A5F">${j.asistio}/${j.totalJ}</td>
+            <td style="padding:6px 3px;text-align:center;font-weight:700;color:#D97706">${j.just}</td>
+            <td style="padding:6px 3px;text-align:center;font-weight:700;color:#DC2626">${j.inj}</td>
+            <td style="padding:6px 3px;text-align:center;font-weight:800;color:${color}">${j.pct}%
+              <div style="background:#E2E8F0;border-radius:4px;height:6px;margin-top:3px;overflow:hidden">
+                <div style="background:${color};height:6px;border-radius:4px;width:${j.pct}%"></div>
               </div>
             </td>
           </tr>`;
