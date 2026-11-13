@@ -1764,7 +1764,7 @@ function renderResumen(){
           <th style="padding:6px 8px;text-align:center;font-weight:700;color:#64748B;border-bottom:2px solid #E2E8F0">Cuartos</th>
           <th style="padding:6px 8px;text-align:center;font-weight:700;color:#64748B;border-bottom:2px solid #E2E8F0">Minutos</th>
           <th style="padding:6px 8px;text-align:left;font-weight:700;color:#64748B;border-bottom:2px solid #E2E8F0">Posiciones jugadas</th>
-          <th style="padding:6px 4px;text-align:left;font-weight:700;color:#64748B;border-bottom:2px solid #E2E8F0;min-width:80px"></th>
+          <th style="padding:6px 4px;text-align:left;font-weight:700;color:#64748B;border-bottom:2px solid #E2E8F0;min-width:80px">Reparto</th>
         </tr></thead>
         <tbody>${statsJ.map((j,i)=>{
           const pct=Math.round(j.cuartos/maxCuartos*100);
@@ -1772,17 +1772,17 @@ function renderResumen(){
             <td style="padding:6px 8px;font-weight:600">${j.dorsal} ${j.nombre}</td>
             <td style="padding:6px 8px;color:#64748B;font-size:11px">${j.posicion}</td>
             <td style="padding:6px 8px;text-align:center;font-weight:800;color:${j.cuartos===0?'#DC2626':'#1E3A5F'}">${j.cuartos}</td>
-            <td style="padding:6px 8px;text-align:center;font-weight:700;color:${j.cuartos===0?'#DC2626':'#16A34A'}">${j.minutos}'</td>
+            <td style="padding:6px 8px;text-align:center;font-weight:700;color:${j.cuartos===0?'#DC2626':'#1E3A5F'}">${j.minutos}'</td>
             <td style="padding:6px 8px;color:#64748B;font-size:10px">${j.posTop||'—'}</td>
             <td style="padding:6px 4px">
-              <div style="background:#E2E8F0;border-radius:4px;height:8px;min-width:60px">
+              <div style="background:#E2E8F0;border-radius:4px;height:8px;min-width:60px" title="${j.cuartos} cuartos · ${pct}% del que más ha jugado">
                 <div style="background:${j.sem};height:8px;border-radius:4px;width:${pct}%"></div>
               </div>
             </td>
           </tr>`;
         }).join("")}</tbody>
       </table>
-      <div style="font-size:10px;color:#94A3B8;margin-top:6px">Barra: verde desde el 80% de la media del equipo (${_mediaC.toFixed(1)} cuartos), naranja entre el 50% y el 80%, roja por debajo o sin jugar.</div>`;
+      <div style="display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:11px;color:#475569;margin-top:8px"><span style="font-weight:700">Reparto respecto a la media (${_mediaC.toFixed(1)} cuartos):</span><span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#16A34A;margin-right:4px"></i>equilibrado (≥ 80%)</span><span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#F97316;margin-right:4px"></i>por debajo (50–80%)</span><span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#DC2626;margin-right:4px"></i>muy por debajo (&lt; 50%) o sin jugar</span></div>`;
   }
 
   // ── ASISTENCIA POR JUGADOR ──
@@ -6664,7 +6664,7 @@ function css(){
  +'.vl-pos.POR{background:#F97316;color:#fff}'
  +'.vl-dn{color:#F97316;font-weight:800;flex:none}'
  +'.vl-nm{font-weight:800;font-size:16px;color:#1E3A5F;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}'
- +'.vl-avg{font-size:12px;font-weight:700;color:#64748B;flex:none}'
+ +'.vl-avg{font-size:15px;font-weight:800;color:#1E3A5F;flex:none}'
  +'.vl-cr{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:2px 0}'
  +'.vl-cl{font-size:12px;font-weight:600;color:#64748B;width:84px;flex:none}'
  +'.vl-sc{display:flex;gap:4px}'
@@ -6702,7 +6702,7 @@ function css(){
  +'.vl-mini{margin-top:8px;font-size:11px;font-weight:700;color:#F97316}.vl-mini span{color:#94A3B8;font-weight:500}'
  +'@container (min-width:1000px){'
  +'.vl-list{display:block}'
- +'.vl-colhead,.vl-pl{display:grid;grid-template-columns:200px repeat(5,minmax(0,1fr));gap:6px;align-items:center}'
+ +'.vl-colhead,.vl-pl{display:grid;grid-template-columns:270px repeat(5,minmax(0,1fr));gap:6px;align-items:center}'
  +'.vl-colhead{padding:0 12px 6px;font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.06em;text-align:center}'
  +'.vl-pl{padding:7px 12px;border-radius:10px;margin-bottom:6px}'
  +'.vl-who{margin:0}.vl-cl{display:none}.vl-cr{justify-content:center;padding:0}.vl-sc{gap:2px}'
