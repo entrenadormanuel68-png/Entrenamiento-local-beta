@@ -292,6 +292,7 @@ body.role-coach .manager-only-el{opacity:0.3;pointer-events:none;cursor:not-allo
           <option value="25">25 min</option>
         </select>
         <button onclick="minutosResumenWA()" style="background:#25D366;color:white;border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">📱 WhatsApp</button>
+        <button onclick="window.extMinutosPDF&&extMinutosPDF()" style="background:#1E3A5F;color:white;border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">📄 PDF</button>
       </div>
     </div>
     <div id="res-minutos" style="overflow-x:auto"></div>
@@ -4208,6 +4209,18 @@ function asistenciaResumenWA(){
   window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
 }
 
+/* Leyenda de demarcaciones (WhatsApp y PDF de minutos): código -> significado, en orden de defensa a ataque */
+const ET_POS_LEYENDA=[['POR','portero'],['DFD','defensa derecho (lateral)'],['DFC','defensa central'],['DFI','defensa izquierdo (lateral)'],
+  ['DCD','central derecho'],['DCI','central izquierdo'],['CAD','carrilero derecho'],['CAI','carrilero izquierdo'],
+  ['MCD','centrocampista derecho'],['MCC','centrocampista central (pivote)'],['MCI','centrocampista izquierdo'],
+  ['MCC2','centrocampista central derecho'],['MCC1','centrocampista central izquierdo'],['MPA','mediapunta'],
+  ['EXD','extremo derecho'],['EXI','extremo izquierdo'],['DELD','delantero derecho'],['DELC','delantero centro'],['DELI','delantero izquierdo'],['DEL','delantero']];
+function etLeyendaPos(codigos){
+  const usados=new Set(codigos);
+  return ET_POS_LEYENDA.filter(x=>usados.has(x[0]));
+}
+window.etLeyendaPos=etLeyendaPos;
+
 function minutosResumenWA(){
   const minSel=document.getElementById('res-min-cuarto');
   const minPorCuarto=minSel?+minSel.value:15;
@@ -4227,8 +4240,10 @@ function minutosResumenWA(){
       });
     });
     const minutos=cuartos*minPorCuarto;
-    const posTop=Object.entries(posicionesCount).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([p,n])=>`${p}(${n})`).join(", ");
-    return{...j,cuartos,minutos,posTop};
+    const posOrd=Object.entries(posicionesCount).sort((a,b)=>b[1]-a[1]).slice(0,2);
+    const posTop=posOrd.map(([p,n])=>`${p}(${n})`).join(", ");
+    const posCodes=posOrd.map(([p])=>p);
+    return{...j,cuartos,minutos,posTop,posCodes};
   }).filter(j=>j.cuartos>0).sort((a,b)=>b.cuartos-a.cuartos);
   if(statsJ.length===0){alert('No hay datos de alineación registrados aún');return;}
   let txt=`⏱ *MINUTOS Y CUARTOS — ${CLUB.nombre||'Equipo'}*\n`;
@@ -4239,6 +4254,11 @@ function minutosResumenWA(){
     if(j.posTop)txt+=`   📍 ${j.posTop}\n`;
   });
   txt+=`\n👥 Total jugadores: ${statsJ.length}`;
+  const ley=etLeyendaPos(statsJ.flatMap(j=>j.posCodes||[]));
+  if(ley.length){
+    txt+=`\n\n📍 *Posiciones:*\n`+ley.map(x=>`${x[0]} = ${x[1]}`).join('\n');
+    txt+=`\n(el número entre paréntesis son los cuartos jugados en esa posición)`;
+  }
   window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
 }
 
@@ -8435,6 +8455,41 @@ window.extInformeGrupo=async function(opt){
     d.p('Muestra reducida: dato orientativo, no es un ranking.',{size:19,color:C.mut});
   }
   return {nombre:'Informe_temporada_'+slug(club.categoria||club.nombre||'equipo')+(tipo!=='todos'?'_'+slug(tipo):'')+'.pdf',b64:docAPdf([d])};
+};
+
+/* ───────── informe de minutos y cuartos (mismos datos que el WhatsApp) ───────── */
+window.extInformeMinutos=async function(){
+  var mc=minCuarto(),club=(typeof CLUB!=='undefined'&&CLUB)?CLUB:{};
+  var jugados=A(PARTIDOS).filter(function(p){return p&&p.rival&&A(p.periodos).some(function(pe){pe=pe||{};return A(pe.goles).length>0||(+pe.golesRival||0)>0;});});
+  if(!jugados.length)throw new Error('Aún no hay partidos con datos registrados');
+  var st=A(JUGADORES).map(function(j){
+    var cuartos=0,cnt={};
+    A(PARTIDOS).forEach(function(p){A(p.periodos).forEach(function(pe){
+      var al=(pe&&pe.alineacion)||{};
+      var k=Object.keys(al).filter(function(x){return String(al[x])===String(j.id);})[0];
+      if(k){cuartos++;cnt[k]=(cnt[k]||0)+1;}
+    });});
+    var pos=Object.keys(cnt).map(function(k){return [k,cnt[k]];}).sort(function(a,b){return b[1]-a[1];}).slice(0,2);
+    return {j:j,cuartos:cuartos,pos:pos};
+  }).filter(function(x){return x.cuartos>0;}).sort(function(a,b){return b.cuartos-a.cuartos;});
+  if(!st.length)throw new Error('No hay datos de alineación registrados aún');
+  var d=new Doc(await logo(),'MINUTOS Y CUARTOS',hoy());
+  d.kpis([{v:String(jugados.length),l:'Partidos disputados'},{v:String(st.length),l:'Jugadores'},{v:mc+' min',l:'Duración del cuarto'}]);
+  d.h2('Minutos jugados por jugador');
+  d.tabla([{t:'Nº',w:.6,a:'c'},{t:'Jugador',w:3.8},{t:'Cuartos',w:1,a:'c'},{t:'Minutos',w:1.1,a:'c'},{t:'Posiciones (cuartos)',w:2.7}],
+    st.map(function(x){return [(x.j.dorsal!=null&&x.j.dorsal!==''?String(x.j.dorsal):'–'),nomJ(x.j),String(x.cuartos),{t:String(x.cuartos*mc)+"'",b:true},
+      x.pos.map(function(q){return q[0]+' ('+q[1]+')';}).join(', ')];}));
+  d.p('Minutos aproximados: cuartos jugados × '+mc+' min. El número entre paréntesis son los cuartos jugados en esa posición.',{size:19,color:C.mut});
+  var ley=window.etLeyendaPos?etLeyendaPos([].concat.apply([],st.map(function(x){return x.pos.map(function(q){return q[0];});}))):[];
+  if(ley.length){
+    d.h2('Demarcaciones');
+    d.tabla([{t:'Código',w:1,a:'c'},{t:'Posición',w:5}],ley.map(function(x){return [{t:x[0],b:true},x[1]];}));
+  }
+  return {nombre:'Minutos_y_cuartos_'+slug(club.categoria||club.nombre||'equipo')+'.pdf',b64:docAPdf([d])};
+};
+window.extMinutosPDF=async function(){
+  try{var r=await extInformeMinutos();entrega(r.nombre,r.b64);}
+  catch(e){alert('No se pudo generar el PDF: '+(e&&e.message?e.message:e));}
 };
 
 /* ───────── interfaz: tarjeta en Resumen ───────── */
