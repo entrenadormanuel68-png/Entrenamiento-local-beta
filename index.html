@@ -8970,6 +8970,7 @@ try{window.pizRender();}catch(e){}
 var KEY='ext_lesiones';
 var LES=[];                 // [{id,jid,fecha,tipo:'lesion'|'molestia',zona,nota,estado:'activa'|'alta',fechaAlta}]
 var hooked=false, formJ=null;
+function ST(){try{return (typeof EtStore!=='undefined'&&EtStore)?EtStore:localStorage;}catch(e){return localStorage;}}
 function warn(m,e){try{console.warn('[ext-ficha] '+m,e||'');}catch(_){}}
 function fb(){try{return (typeof DB!=='undefined'&&DB)?DB:null;}catch(e){return null;}}
 function root(){try{return ROOT;}catch(e){return 'biblia';}}
@@ -8982,8 +8983,8 @@ function toast(m){try{etToast(m);}catch(e){}}
 
 /* ───────── almacenamiento ───────── */
 function norm(v){return arr(v).filter(function(x){return x&&x.id&&x.jid!=null;}).map(function(x){return {id:String(x.id),jid:x.jid,fecha:x.fecha||'',tipo:x.tipo==='molestia'?'molestia':'lesion',zona:x.zona||'',nota:x.nota||'',estado:x.estado==='alta'?'alta':'activa',fechaAlta:x.fechaAlta||''};});}
-function loadLocal(){try{LES=norm(JSON.parse(EtStore.getItem(KEY)||'[]'));}catch(e){LES=[];}}
-function saveLocal(){try{EtStore.setItem(KEY,JSON.stringify(LES));}catch(e){}}
+function loadLocal(){try{LES=norm(JSON.parse(ST().getItem(KEY)||'[]'));}catch(e){LES=[];}}
+function saveLocal(){try{ST().setItem(KEY,JSON.stringify(LES));}catch(e){}}
 function persist(x){
   saveLocal();
   var d=fb();if(d){var o={};LES.forEach(function(l){o[l.id]=l;});d.ref(root()+'/'+KEY).set(LES.length?o:null).catch(function(e){warn('guardar',e);});}
@@ -9129,7 +9130,7 @@ function evolucionHTML(j){
   if(A.length>=2){
     h+='<div style="font-size:11px;color:#64748B;margin:12px 0 4px">Asistencia por mes</div><div style="display:flex;gap:6px;align-items:flex-end">'+
       A.map(function(m){var p=m.t?Math.round(m.a/m.t*100):0,mo=MESES[+m.k.slice(5,7)-1]||m.k;
-        return '<div style="flex:0 1 56px;text-align:center;min-width:0" title="'+mo+': '+m.a+' de '+m.t+' sesiones"><div style="font-size:10px;font-weight:700;color:#334155">'+p+'%</div><div style="height:46px;display:flex;align-items:flex-end;justify-content:center"><div style="width:70%;background:#2a78d6;border-radius:3px 3px 0 0;height:'+Math.max(3,p*.46)+'px"></div></div><div style="font-size:10px;color:#64748B">'+mo+'</div></div>';}).join('')+'</div>';
+        return '<div style="flex:1;text-align:center;min-width:0" title="'+mo+': '+m.a+' de '+m.t+' sesiones"><div style="font-size:10px;font-weight:700;color:#334155">'+p+'%</div><div style="height:46px;display:flex;align-items:flex-end;justify-content:center"><div style="width:70%;background:#2a78d6;border-radius:3px 3px 0 0;height:'+Math.max(3,p*.46)+'px"></div></div><div style="font-size:10px;color:#64748B">'+mo+'</div></div>';}).join('')+'</div>';
   }
   return h+'<div style="font-size:11px;color:#94A3B8;margin-top:10px">La evolución en partidos está en «⭐ Valoración en partidos».</div></div>';
 }
