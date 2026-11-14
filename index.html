@@ -1000,7 +1000,7 @@ body.role-coach .manager-only-el{opacity:0.3;pointer-events:none;cursor:not-allo
   var CLAVES = ['bib_club','bib_jugadores','bib_sesiones','bib_partidos','bib_biblioteca','bib_juegos','bib_asistencia',
     'bib_auth','bib_festivos','bib_club_logo','bib_pizarra_boards','bib_ses_libres','bib_club_del',
     'pizarra_boards','pizarra_v2','pizarra_sync_vistas','ses_libres',
-    'sf7_sesiones_v1','sf8_sesiones_v1','sf11_sesiones_v1','valPendiente_v1','ext_alta','ext_motivo','clubLogo'];
+    'sf7_sesiones_v1','sf8_sesiones_v1','sf11_sesiones_v1','valPendiente_v1','ext_alta','ext_motivo','ext_lesiones','clubLogo'];
   var SET = {}; CLAVES.forEach(function (k) { SET[k] = 1; });
   // (bib_role, et_comp, bib_orden, piz_orden y cualquier otra clave se quedan en localStorage)
   var KEEP_BACKUPS = 5;
@@ -8962,6 +8962,281 @@ try{window.pizRender();}catch(e){}
 <script src="sync-drive.js" defer></script>
 <script src="acceso.js" defer></script>
 
+<script id="ext-ficha">
+/* ext-ficha — evolución del jugador, registro de lesiones/molestias y plantillas de sesión.
+   Bloque aditivo: quitar este <script> devuelve la app a su comportamiento anterior. */
+(function(){
+'use strict';
+var KEY='ext_lesiones';
+var LES=[];                 // [{id,jid,fecha,tipo:'lesion'|'molestia',zona,nota,estado:'activa'|'alta',fechaAlta}]
+var hooked=false, formJ=null;
+function warn(m,e){try{console.warn('[ext-ficha] '+m,e||'');}catch(_){}}
+function fb(){try{return (typeof DB!=='undefined'&&DB)?DB:null;}catch(e){return null;}}
+function root(){try{return ROOT;}catch(e){return 'biblia';}}
+function E(s){try{return esc(s);}catch(e){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}}
+function arr(x){try{return toArr(x);}catch(e){return Array.isArray(x)?x:(x?Object.values(x):[]);}}
+function hoy(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function dias(a,b){var x=new Date(a+'T00:00:00'),y=new Date((b||hoy())+'T00:00:00');return Math.max(0,Math.round((y-x)/864e5));}
+function fmtF(f){if(!f)return '';var p=String(f).split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0].slice(2):f;}
+function toast(m){try{etToast(m);}catch(e){}}
+
+/* ───────── almacenamiento ───────── */
+function norm(v){return arr(v).filter(function(x){return x&&x.id&&x.jid!=null;}).map(function(x){return {id:String(x.id),jid:x.jid,fecha:x.fecha||'',tipo:x.tipo==='molestia'?'molestia':'lesion',zona:x.zona||'',nota:x.nota||'',estado:x.estado==='alta'?'alta':'activa',fechaAlta:x.fechaAlta||''};});}
+function loadLocal(){try{LES=norm(JSON.parse(EtStore.getItem(KEY)||'[]'));}catch(e){LES=[];}}
+function saveLocal(){try{EtStore.setItem(KEY,JSON.stringify(LES));}catch(e){}}
+function persist(x){
+  saveLocal();
+  var d=fb();if(d){var o={};LES.forEach(function(l){o[l.id]=l;});d.ref(root()+'/'+KEY).set(LES.length?o:null).catch(function(e){warn('guardar',e);});}
+}
+function hookFb(){
+  var d=fb();if(!d||hooked)return;hooked=true;
+  d.ref(root()+'/'+KEY).on('value',function(s){LES=norm(s.val());saveLocal();refrescar();});
+}
+function refrescar(){
+  try{if(typeof jugadorAbierto!=='undefined'&&jugadorAbierto!==null&&document.getElementById('jug-detalle')&&document.getElementById('jug-detalle').style.display!=='none')renderJugadorDetalle();}catch(e){}
+  try{pintarResumen();}catch(e){}
+}
+
+/* ───────── lesiones ───────── */
+var ZONAS=['Cabeza','Cuello','Hombro','Brazo / mano','Costillas / pecho','Espalda','Cadera / ingle','Muslo','Rodilla','Gemelo / pierna','Tobillo','Pie','Otra'];
+function deJ(id){return LES.filter(function(l){return String(l.jid)===String(id);});}
+function activas(id){return (id==null?LES:deJ(id)).filter(function(l){return l.estado==='activa';});}
+function ico(l){return l.tipo==='lesion'?'🩹':'⚠️';}
+function etq(l){return (l.tipo==='lesion'?'Lesión':'Molestia')+(l.zona?' · '+l.zona:'');}
+window.extLesAdd=function(jid){
+  var g=function(i){var e=document.getElementById(i);return e?e.value:'';};
+  var f=g('exl-fecha')||hoy();
+  var zona=g('exl-zona');if(zona==='Otra'&&g('exl-otra').trim())zona=g('exl-otra').trim();
+  LES.unshift({id:'l'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),jid:jid,fecha:f,tipo:g('exl-tipo')==='molestia'?'molestia':'lesion',zona:zona,nota:g('exl-nota').trim(),estado:'activa',fechaAlta:''});
+  formJ=null;persist();refrescar();toast('🩹 Registrado');
+};
+window.extLesForm=function(jid){formJ=(formJ===jid?null:jid);refrescar();};
+window.extLesAlta=function(id){
+  var l=LES.find(function(x){return x.id===id;});if(!l)return;
+  l.estado='alta';l.fechaAlta=hoy();persist();refrescar();toast('✅ Alta registrada');
+};
+window.extLesReabrir=function(id){
+  var l=LES.find(function(x){return x.id===id;});if(!l)return;
+  l.estado='activa';l.fechaAlta='';persist();refrescar();
+};
+window.extLesDel=function(id){
+  if(!confirm('¿Eliminar este registro?'))return;
+  LES=LES.filter(function(x){return x.id!==id;});persist();refrescar();
+};
+function filaLes(l,conNombre){
+  var d=l.estado==='activa'?dias(l.fecha):dias(l.fecha,l.fechaAlta||l.fecha);
+  var j=conNombre?arr(JUGADORES).find(function(x){return String(x.id)===String(l.jid);}):null;
+  var act=l.estado==='activa';
+  return '<div style="display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-bottom:1px solid #F1F5F9">'+
+    '<div style="font-size:18px;line-height:1.2">'+ico(l)+'</div>'+
+    '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:#1e293b">'+(j?E(j.nombre)+' · ':'')+E(etq(l))+
+      ' <span style="font-size:10px;font-weight:700;border-radius:4px;padding:1px 6px;background:'+(act?'#FEE2E2':'#DCFCE7')+';color:'+(act?'#B91C1C':'#166534')+'">'+(act?'ACTIVA':'ALTA')+'</span></div>'+
+      '<div style="font-size:11px;color:#64748B">Desde '+fmtF(l.fecha)+(act?' · '+d+' día'+(d!==1?'s':''):' · alta '+fmtF(l.fechaAlta)+' · '+d+' día'+(d!==1?'s':''))+'</div>'+
+      (l.nota?'<div style="font-size:12px;color:#475569;margin-top:2px">'+E(l.nota)+'</div>':'')+'</div>'+
+    '<div style="display:flex;gap:4px;flex-shrink:0">'+
+      (act?'<button onclick="extLesAlta(\''+l.id+'\')" style="background:#16A34A;color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer">✅ Alta</button>'
+          :'<button onclick="extLesReabrir(\''+l.id+'\')" title="Volver a marcar como activa" style="background:#F1F5F9;color:#475569;border:none;border-radius:6px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer">↩</button>')+
+      '<button onclick="extLesDel(\''+l.id+'\')" title="Eliminar" style="background:#F1F5F9;color:#B91C1C;border:none;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer">🗑</button></div></div>';
+}
+function lesionesHTML(j){
+  var L=deJ(j.id).sort(function(a,b){if(a.estado!==b.estado)return a.estado==='activa'?-1:1;return (b.fecha||'').localeCompare(a.fecha||'');});
+  var na=L.filter(function(l){return l.estado==='activa';}).length;
+  var tot=L.reduce(function(s,l){return s+(l.fecha?dias(l.fecha,l.estado==='activa'?hoy():(l.fechaAlta||l.fecha)):0);},0);
+  var inp='border:1px solid #CBD5E1;border-radius:6px;padding:6px 8px;font-size:13px;font-family:inherit;background:white;';
+  var h='<div id="ext-les-card" style="background:#FFF5F5;border:1px solid #FECACA;border-radius:10px;padding:14px;margin-bottom:16px">'+
+   '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">'+
+   '<div style="font-size:10px;font-weight:700;color:#B91C1C;text-transform:uppercase;letter-spacing:1px">🩹 Lesiones y molestias'+(na?' · <span style="background:#B91C1C;color:#fff;border-radius:10px;padding:1px 7px">'+na+' activa'+(na>1?'s':'')+'</span>':'')+'</div>'+
+   '<button onclick="extLesForm('+JSON.stringify(j.id)+')" style="background:#B91C1C;color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:12px;font-weight:700;cursor:pointer">'+(formJ===j.id?'Cancelar':'+ Registrar')+'</button></div>';
+  if(formJ===j.id){
+    h+='<div style="background:white;border:1px solid #FECACA;border-radius:8px;padding:10px;margin-top:10px;display:grid;gap:8px">'+
+     '<div style="display:flex;gap:8px;flex-wrap:wrap"><label style="font-size:11px;color:#64748B">Tipo<br><select id="exl-tipo" style="'+inp+'"><option value="lesion">🩹 Lesión</option><option value="molestia">⚠️ Molestia</option></select></label>'+
+     '<label style="font-size:11px;color:#64748B">Zona<br><select id="exl-zona" onchange="document.getElementById(\'exl-otra\').style.display=this.value===\'Otra\'?\'block\':\'none\'" style="'+inp+'">'+ZONAS.map(function(z){return '<option>'+z+'</option>';}).join('')+'</select></label>'+
+     '<label style="font-size:11px;color:#64748B">Desde<br><input id="exl-fecha" type="date" value="'+hoy()+'" style="'+inp+'"></label></div>'+
+     '<input id="exl-otra" placeholder="¿Qué zona?" style="display:none;'+inp+'width:100%;box-sizing:border-box">'+
+     '<input id="exl-nota" placeholder="Nota (cómo fue, qué recomienda el médico, cuándo revisar…)" style="'+inp+'width:100%;box-sizing:border-box">'+
+     '<div><button onclick="extLesAdd('+JSON.stringify(j.id)+')" style="background:#16A34A;color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer">Guardar</button></div></div>';
+  }
+  if(!L.length)h+='<div style="font-size:12px;color:#94A3B8;margin-top:10px">Sin registros. Pulsa «+ Registrar» cuando haya una molestia o lesión.</div>';
+  else h+='<div style="margin-top:6px">'+L.map(function(l){return filaLes(l,false);}).join('')+'</div>'+
+    '<div style="font-size:11px;color:#94A3B8;margin-top:6px">'+L.length+' registro'+(L.length!==1?'s':'')+' · '+tot+' día'+(tot!==1?'s':'')+' acumulados</div>';
+  return h+'</div>';
+}
+
+/* ───────── evolución ───────── */
+var CATC={'TÉCNICA':'#2a78d6','TÁCTICA':'#eb6834','FÍSICO':'#1baf7a','MENTAL':'#6250d6'};
+function catNom(c){return c.charAt(0)+c.slice(1).toLowerCase();}
+function mediaV(a){a=a.filter(function(v){return v>0;});return a.length?a.reduce(function(x,y){return x+y;},0)/a.length:null;}
+function evoDatos(j){
+  var ev=j.evaluaciones||{};
+  var cats=HABS.map(function(c){return {cat:c.cat,vals:PEVAL.map(function(p){return mediaV(c.items.map(function(h){return +((ev[p]||{})[h])||0;}));})};});
+  var habs=[];
+  HABS.forEach(function(c){c.items.forEach(function(h){
+    var pts=PEVAL.map(function(p){var v=+((ev[p]||{})[h])||0;return v>0?v:null;});
+    var idx=[];pts.forEach(function(v,i){if(v!=null)idx.push(i);});
+    if(idx.length>=2)habs.push({h:h,ini:pts[idx[0]],fin:pts[idx[idx.length-1]],d:pts[idx[idx.length-1]]-pts[idx[0]]});
+  });});
+  return {cats:cats,habs:habs};
+}
+function lineas(D){
+  var W=480,H=190,L=26,R=70,T=12,B=26,pw=W-L-R,ph=H-T-B,n=PEVAL.length;
+  var x=function(i){return L+(n>1?pw*i/(n-1):pw/2);},y=function(v){return T+ph*(1-(v-1)/4);};
+  var s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Evolución de la media por categoría y período" style="display:block;max-width:560px">';
+  for(var g=1;g<=5;g++)s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(g)+'" y2="'+y(g)+'" stroke="#E2E8F0" stroke-width="1"/><text x="'+(L-6)+'" y="'+(y(g)+4)+'" font-size="10" fill="#64748B" text-anchor="end">'+g+'</text>';
+  PEVAL.forEach(function(p,i){s+='<text x="'+x(i)+'" y="'+(H-8)+'" font-size="10" fill="#64748B" text-anchor="middle">'+E(p)+'</text>';});
+  var ult=[];
+  D.cats.forEach(function(c){
+    var col=CATC[c.cat]||'#64748B',pts=[],last=null;
+    c.vals.forEach(function(v,i){if(v!=null){pts.push([x(i),y(v),v,i]);last=[x(i),y(v)];}});
+    if(pts.length>1)s+='<polyline points="'+pts.map(function(p){return p[0]+','+p[1];}).join(' ')+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+    pts.forEach(function(p){s+='<circle cx="'+p[0]+'" cy="'+p[1]+'" r="4.5" fill="'+col+'" stroke="#fff" stroke-width="2"><title>'+E(catNom(c.cat))+' · '+E(PEVAL[p[3]])+': '+p[2].toFixed(1)+'</title></circle>';});
+    if(last)ult.push({y:last[1],x:last[0],c:col,t:catNom(c.cat)});
+  });
+  ult.sort(function(a,b){return a.y-b.y;});
+  for(var k=1;k<ult.length;k++)if(ult[k].y-ult[k-1].y<12)ult[k].y=ult[k-1].y+12;   // separa etiquetas que chocan
+  ult.forEach(function(u){s+='<text x="'+(u.x+9)+'" y="'+(u.y+4)+'" font-size="11" font-weight="700" fill="#334155">'+E(u.t)+'</text>';});
+  return s+'</svg>';
+}
+function asistMes(j){
+  try{
+    var S=arr(SESIONES).filter(function(s){return s.completada&&s.fechaReal;});
+    if(window.extSesAlta)S=extSesAlta(j,S);
+    var m={};
+    S.forEach(function(s){var k=String(s.fechaReal).slice(0,7);var o=m[k]||(m[k]={t:0,a:0});o.t++;if(ASISTENCIA[s.num]&&ASISTENCIA[s.num][j.id]===true)o.a++;});
+    return Object.keys(m).sort().map(function(k){return {k:k,t:m[k].t,a:m[k].a};});
+  }catch(e){return [];}
+}
+var MESES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+function evolucionHTML(j){
+  var D=evoDatos(j),con=D.cats.some(function(c){return c.vals.filter(function(v){return v!=null;}).length>=1;});
+  var h='<div id="ext-evo-card" style="background:white;border:1px solid #E2E8F0;border-radius:10px;padding:14px;margin-bottom:16px">'+
+    '<div style="font-size:10px;font-weight:700;color:#1E3A5F;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">📈 Evolución del jugador</div>';
+  if(!con)return h+'<div style="font-size:12px;color:#94A3B8">Aún no hay evaluaciones. Puntúa las habilidades de abajo (☆) y aquí verás cómo evoluciona cada categoría.</div></div>';
+  var multi=D.cats.some(function(c){return c.vals.filter(function(v){return v!=null;}).length>=2;});
+  h+='<div style="font-size:11px;color:#64748B;margin-bottom:4px">Media por categoría en cada período (1–5)</div>'+lineas(D);
+  if(!multi)h+='<div style="font-size:11px;color:#94A3B8;margin-top:4px">Con dos períodos evaluados aparecerán las líneas y los cambios.</div>';
+  h+='<details style="margin-top:6px"><summary style="font-size:11px;color:#64748B;cursor:pointer">Ver datos en tabla</summary><div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:11px;margin-top:6px;width:100%"><thead><tr><th style="text-align:left;padding:3px 6px;color:#64748B">Categoría</th>'+PEVAL.map(function(p){return '<th style="padding:3px 6px;color:#64748B">'+E(p)+'</th>';}).join('')+'</tr></thead><tbody>'+
+    D.cats.map(function(c){return '<tr style="border-top:1px solid #F1F5F9"><td style="padding:3px 6px;font-weight:700"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+CATC[c.cat]+';margin-right:5px"></span>'+E(catNom(c.cat))+'</td>'+c.vals.map(function(v){return '<td style="text-align:center;padding:3px 6px">'+(v!=null?v.toFixed(1):'–')+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table></div></details>';
+  var sube=D.habs.filter(function(x){return x.d>0;}).sort(function(a,b){return b.d-a.d;}).slice(0,3);
+  var baja=D.habs.filter(function(x){return x.d<0;}).sort(function(a,b){return a.d-b.d;}).slice(0,3);
+  if(sube.length||baja.length){
+    var li=function(x){return '<div style="font-size:12px;padding:2px 0"><b>'+E(x.h)+'</b> <span style="color:#64748B">'+x.ini+' → '+x.fin+'</span></div>';};
+    h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:10px">'+
+      '<div style="background:#F0FDF4;border-radius:8px;padding:8px 10px"><div style="font-size:11px;font-weight:700;color:#166534;margin-bottom:2px">▲ Más ha mejorado</div>'+(sube.length?sube.map(li).join(''):'<div style="font-size:12px;color:#94A3B8">—</div>')+'</div>'+
+      '<div style="background:#FFF7ED;border-radius:8px;padding:8px 10px"><div style="font-size:11px;font-weight:700;color:#C2410C;margin-bottom:2px">▼ A vigilar</div>'+(baja.length?baja.map(li).join(''):'<div style="font-size:12px;color:#94A3B8">Ninguna habilidad ha bajado</div>')+'</div></div>'+
+      '<div style="font-size:10px;color:#94A3B8;margin-top:4px">Comparado el primer período evaluado con el último.</div>';
+  }
+  var A=asistMes(j);
+  if(A.length>=2){
+    h+='<div style="font-size:11px;color:#64748B;margin:12px 0 4px">Asistencia por mes</div><div style="display:flex;gap:6px;align-items:flex-end">'+
+      A.map(function(m){var p=m.t?Math.round(m.a/m.t*100):0,mo=MESES[+m.k.slice(5,7)-1]||m.k;
+        return '<div style="flex:0 1 56px;text-align:center;min-width:0" title="'+mo+': '+m.a+' de '+m.t+' sesiones"><div style="font-size:10px;font-weight:700;color:#334155">'+p+'%</div><div style="height:46px;display:flex;align-items:flex-end;justify-content:center"><div style="width:70%;background:#2a78d6;border-radius:3px 3px 0 0;height:'+Math.max(3,p*.46)+'px"></div></div><div style="font-size:10px;color:#64748B">'+mo+'</div></div>';}).join('')+'</div>';
+  }
+  return h+'<div style="font-size:11px;color:#94A3B8;margin-top:10px">La evolución en partidos está en «⭐ Valoración en partidos».</div></div>';
+}
+
+/* ───────── gancho en la ficha, la lista y Resumen ───────── */
+function wrap(nombre,fn){var o=window[nombre];if(typeof o!=='function')return;window[nombre]=function(){var r=o.apply(this,arguments);try{fn.apply(this,arguments);}catch(e){warn(nombre,e);}return r;};}
+wrap('renderJugadorDetalle',function(){
+  var j=JUGADORES[jugadorAbierto];if(!j)return;
+  var det=document.getElementById('jug-detalle');if(!det)return;
+  det.querySelectorAll('#ext-les-card,#ext-evo-card').forEach(function(n){n.remove();});
+  var ta=det.querySelector('textarea[oninput^="updJObj"]');var ref=ta&&ta.parentElement;if(!ref)return;
+  var w=document.createElement('div');w.innerHTML=lesionesHTML(j)+evolucionHTML(j);
+  var ant=ref;while(w.firstChild){var n=w.firstChild;ant.parentNode.insertBefore(n,ant.nextSibling);ant=n;}
+});
+wrap('renderJugadores',function(){
+  document.querySelectorAll('#jug-lista > div[onclick^="openJug("]').forEach(function(c){
+    var m=/openJug\((\d+)\)/.exec(c.getAttribute('onclick')||'');if(!m)return;
+    var j=JUGADORES[+m[1]];if(!j)return;var a=activas(j.id);if(!a.length)return;
+    var blk=c.firstElementChild&&c.firstElementChild.firstElementChild;if(!blk)return;
+    var d=document.createElement('div');d.style.cssText='margin-top:3px;font-size:10px;font-weight:700;color:#B91C1C;background:#FEE2E2;border-radius:4px;padding:1px 6px;display:inline-block';
+    d.textContent='🩹 '+a.map(function(l){return l.zona||(l.tipo==='lesion'?'Lesión':'Molestia');}).join(', ');
+    blk.appendChild(d);
+  });
+});
+function pintarResumen(){
+  var m=document.getElementById('res-minutos');if(!m)return;
+  var el=document.getElementById('ext-lesiones-card');
+  if(!el){el=document.createElement('div');el.id='ext-lesiones-card';el.className='card';el.style.marginTop='0';
+    var ref=document.getElementById('ext-informes-card')||document.getElementById('ext-porteros-card')||m.parentElement;ref.parentNode.insertBefore(el,ref);}
+  var A=activas().sort(function(a,b){return (a.fecha||'').localeCompare(b.fecha||'');});
+  el.innerHTML='<div class="card-title" style="margin:0 0 6px">🩹 Lesiones y molestias activas</div>'+
+    (A.length?A.map(function(l){return filaLes(l,true);}).join(''):'<div style="font-size:12px;color:#16A34A">Sin lesiones ni molestias activas 👍</div>')+
+    '<div style="font-size:11px;color:#94A3B8;margin-top:6px">Se registran en la ficha de cada jugador. Son datos del cuerpo técnico: no se envían por WhatsApp.</div>';
+}
+wrap('renderResumen',pintarResumen);
+
+/* ───────── plantillas de sesión ───────── */
+var CAMPOS=['tema','objetivo','calentamiento','cal_min','ej1_nom','ej1_desc','ej1_prov','ej1_min','ej2_nom','ej2_desc','ej2_prov','ej2_min','ej3_nom','ej3_desc','ej3_prov','ej3_min','partido','partido_min','vuelta','vuelta_min','material','cal_dib','ej1_dib','ej2_dib','ej3_dib','partido_dib','vuelta_dib'];
+window.extSesDuplicar=function(id){
+  var s=SES_LIBRES.find(function(x){return x.id===id;});if(!s)return;
+  var c=JSON.parse(JSON.stringify(s));c.id='sl_'+Date.now();c.tema=(s.tema||'Sesión')+' (copia)';c.fecha='';c.notas='';c.creadaEn=Date.now();
+  SES_LIBRES.unshift(c);saveSesLibres();sesLibreAbierta=c.id;renderSesLibreDetalle();toast('📋 Copia creada: edítala y cámbiale el nombre');
+};
+window.extSesGuardarPlantilla=function(num){
+  var s=SESIONES.find(function(x){return x.num===num;});if(!s)return;
+  var tipo=['CARGA','DESARROLLO','PRE-PARTIDO'].indexOf(s.tipo)>=0?s.tipo:'LIBRE';
+  var c={id:'sl_'+Date.now(),tipo:tipo,sistema:(typeof CLUB!=='undefined'&&CLUB.sistema)||s.sistema||'',fecha:'',notas:'',creadaEn:Date.now()};
+  CAMPOS.forEach(function(k){var v=s[k];c[k]=v==null?(/_min$/.test(k)?0:''):v;});
+  SES_LIBRES.unshift(c);saveSesLibres();toast('💾 Guardada en Mis Sesiones como plantilla');
+};
+window.extSesAplicarAbrir=function(id){
+  var s=SES_LIBRES.find(function(x){return x.id===id;});if(!s)return;
+  var pend=SESIONES.filter(function(x){return !x.completada&&!x.estado;});
+  if(!pend.length){alert('No hay sesiones pendientes a las que aplicar la plantilla.');return;}
+  var ov=document.getElementById('ext-apl-ov');if(ov)ov.remove();
+  ov=document.createElement('div');ov.id='ext-apl-ov';ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML='<div style="background:white;border-radius:12px;padding:18px;max-width:420px;width:100%"><div style="font-weight:800;font-size:15px;margin-bottom:6px">📥 Aplicar «'+E(s.tema)+'» a una sesión</div>'+
+   '<div style="font-size:12px;color:#64748B;margin-bottom:10px">Sustituye el contenido de la sesión elegida (objetivo, ejercicios, material). Se mantienen su fecha, su tipo, sus notas y la asistencia.</div>'+
+   '<select id="ext-apl-sel" style="width:100%;border:1px solid #CBD5E1;border-radius:6px;padding:8px;font-size:13px;margin-bottom:12px">'+pend.map(function(x){return '<option value="'+x.num+'">Sesión '+String(x.num).padStart(3,'0')+' · '+E(x.tema||'')+(x.fechaReal?' ('+E(x.fechaReal)+')':'')+'</option>';}).join('')+'</select>'+
+   '<div style="display:flex;gap:8px;justify-content:flex-end"><button onclick="document.getElementById(\'ext-apl-ov\').remove()" style="background:#F1F5F9;border:none;border-radius:7px;padding:8px 14px;font-weight:700;cursor:pointer">Cancelar</button>'+
+   '<button onclick="extSesAplicar(\''+id+'\')" style="background:#1E3A5F;color:#fff;border:none;border-radius:7px;padding:8px 14px;font-weight:700;cursor:pointer">Aplicar</button></div></div>';
+  document.body.appendChild(ov);
+};
+window.extSesAplicar=function(id){
+  var s=SES_LIBRES.find(function(x){return x.id===id;}),sel=document.getElementById('ext-apl-sel');if(!s||!sel)return;
+  var t=SESIONES.find(function(x){return x.num===+sel.value;});if(!t)return;
+  if(!confirm('¿Sustituir el contenido de la sesión '+String(t.num).padStart(3,'0')+' por esta plantilla?'))return;
+  CAMPOS.forEach(function(k){if(s[k]!==undefined&&s[k]!=='')t[k]=s[k];else if(/_dib$/.test(k))t[k]='';});
+  save('sesiones',SESIONES);
+  var ov=document.getElementById('ext-apl-ov');if(ov)ov.remove();
+  try{updateHeader();}catch(e){}
+  toast('✅ Plantilla aplicada a la sesión '+String(t.num).padStart(3,'0'));
+};
+function btn(txt,fn,title){var b=document.createElement('button');b.className='btn btn-ghost btn-sm';b.textContent=txt;b.title=title||'';b.onclick=fn;return b;}
+wrap('renderSesLibreDetalle',function(){
+  var det=document.getElementById('mses-detalle');if(!det||!det.firstElementChild)return;
+  var id=sesLibreAbierta;if(!id)return;
+  var bar=det.firstElementChild;
+  bar.appendChild(btn('📋 Duplicar',function(){extSesDuplicar(id);},'Crea una copia para adaptarla a otro grupo o semana'));
+  bar.appendChild(btn('📥 Aplicar a sesión…',function(){extSesAplicarAbrir(id);},'Usa esta plantilla en una sesión pendiente del calendario'));
+});
+wrap('renderSesionDetalle',function(){
+  var det=document.getElementById('ses-detalle');if(!det||!det.firstElementChild)return;
+  var num=sesionAbierta;if(num==null)return;
+  det.firstElementChild.appendChild(btn('💾 Guardar como plantilla',function(){extSesGuardarPlantilla(num);},'Guarda una copia en Mis Sesiones para reutilizarla'));
+});
+
+/* ───────── copia de seguridad ───────── */
+var _bc=window.backupConstruir;
+if(typeof _bc==='function')window.backupConstruir=function(){
+  var d=_bc.apply(this,arguments);
+  try{d.almacen=d.almacen||{};d.almacen[KEY]=JSON.stringify(LES);}catch(e){warn('backup',e);}
+  return d;
+};
+var _ba=window.backupAplicar;
+if(typeof _ba==='function')window.backupAplicar=function(d){
+  var r=_ba.apply(this,arguments);
+  try{var a=(d&&d.almacen)||{};if(a[KEY]!==undefined){LES=norm(JSON.parse(a[KEY]||'[]'));persist();}}catch(e){warn('restaurar',e);}
+  return r;
+};
+
+/* ───────── arranque ───────── */
+loadLocal();
+function init(){hookFb();setInterval(function(){try{hookFb();if(document.getElementById('res-minutos')&&!document.getElementById('ext-lesiones-card'))pintarResumen();}catch(e){}},1500);}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
 <script id="ext-cierre">
 /* ext-cierre — cierre del partido (qué funcionó / qué mejorar / foco) y aviso en la sesión siguiente. Aditivo. */
 (function(){
