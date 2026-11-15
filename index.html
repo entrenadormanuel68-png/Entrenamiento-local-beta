@@ -7947,7 +7947,7 @@ var ov=null,btn=null,selNum=null,verAltas=false;
 function css(){
   var s=document.createElement('style');
   s.textContent=
-  '#ext-campo-btn{position:fixed;right:14px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:900;background:#F97316;color:#fff;border:none;border-radius:28px;padding:12px 18px;font-weight:800;font-size:14px;box-shadow:0 4px 14px rgba(0,0,0,.3);display:none}'+
+  '#ext-campo-btn{position:fixed;right:10px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:900;background:#F97316;color:#fff;border:none;border-radius:50%;width:46px;height:46px;padding:0;font-weight:800;font-size:9px;line-height:1.1;box-shadow:0 3px 10px rgba(0,0,0,.28);display:none}#ext-campo-btn span{display:block;font-size:17px}'+
   '#ext-campo{position:fixed;inset:0;z-index:9500;background:#F1F5F9;overflow:auto;display:none;-webkit-overflow-scrolling:touch}'+
   '#ext-campo .xc-top{position:sticky;top:0;background:#1E3A5F;color:#fff;padding:10px 12px;display:flex;gap:8px;align-items:center;z-index:2}'+
   '#ext-campo select,#ext-campo input{font-size:15px;padding:8px;border-radius:8px;border:1px solid #CBD5E1;max-width:100%}'+
@@ -8045,7 +8045,7 @@ function visible(){try{return !!(typeof currentRole!=='undefined'&&currentRole);
 function init(){
   try{
     loadLocal();loadMot();css();
-    btn=document.createElement('button');btn.id='ext-campo-btn';btn.textContent='⚡ Campo';btn.onclick=abrir;document.body.appendChild(btn);
+    btn=document.createElement('button');btn.id='ext-campo-btn';btn.title='Modo campo: asistencia rápida';btn.innerHTML='<span>⚡</span>Campo';btn.onclick=abrir;document.body.appendChild(btn);
     ov=document.createElement('div');ov.id='ext-campo';document.body.appendChild(ov);
     setInterval(function(){btn.style.display=(visible()&&!campoAbierto)?'block':'none';},1200);
     hookFb();
@@ -9235,6 +9235,179 @@ if(typeof _ba==='function')window.backupAplicar=function(d){
 /* ───────── arranque ───────── */
 loadLocal();
 function init(){hookFb();setInterval(function(){try{hookFb();if(document.getElementById('res-minutos')&&!document.getElementById('ext-lesiones-card'))pintarResumen();}catch(e){}},1500);}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
+<script id="ext-reloj">
+/* ext-reloj — cronómetro de partido (cuartos, cuenta atrás) y de sesión (bloques).
+   Bloque aditivo e independiente: guarda solo su estado en este móvil. Quitar este <script> lo desactiva. */
+(function(){
+'use strict';
+var KEY='ext_reloj_v1';
+var DEF_BLOQUES=[['Calentamiento',10],['Ejercicio 1',15],['Ejercicio 2',20],['Ejercicio 3',10],['Partido',30],['Vuelta a la calma',5]];
+var S={modo:'partido',
+  partido:{cuartoMin:15,cuarto:1,running:false,t0:0,acum:0,avisado:false},
+  sesion:{bloques:DEF_BLOQUES.map(function(b){return {n:b[0],m:b[1]};}),bloque:0,running:false,t0:0,acum:0,avisado:false}};
+var abierto=false,btn=null,ov=null,ctx=null,wl=null,tickId=null;
+function warn(m,e){try{console.warn('[ext-reloj] '+m,e||'');}catch(_){}}
+function E(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function load(){try{var r=JSON.parse(localStorage.getItem(KEY)||'null');if(!r)return;
+  if(r.modo==='sesion'||r.modo==='partido')S.modo=r.modo;
+  ['partido','sesion'].forEach(function(k){if(r[k])Object.keys(r[k]).forEach(function(x){S[k][x]=r[k][x];});});
+  var b=S.sesion.bloques;if(!Array.isArray(b)||!b.length)S.sesion.bloques=DEF_BLOQUES.map(function(x){return {n:x[0],m:x[1]};});
+  if(S.sesion.bloque>=S.sesion.bloques.length)S.sesion.bloque=0;
+  var cm=+S.partido.cuartoMin;S.partido.cuartoMin=(cm>=1&&cm<=60)?cm:15;
+  var c=+S.partido.cuarto;S.partido.cuarto=(c>=1&&c<=4)?c:1;
+}catch(e){warn('load',e);}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function dur(k){return k==='partido'?S.partido.cuartoMin*60000:(+S.sesion.bloques[S.sesion.bloque].m||1)*60000;}
+function el(k){var o=S[k];return o.acum+(o.running?Date.now()-o.t0:0);}
+function rem(k){return dur(k)-el(k);}
+function fmt(ms){var neg=ms<0,a=Math.abs(ms);var m=Math.floor(a/60000),s=Math.floor((a%60000)/1000);return (neg?'+':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');}
+function corriendo(){return S.partido.running?'partido':(S.sesion.running?'sesion':null);}
+
+/* ───────── aviso (sonido + vibración) y pantalla encendida ───────── */
+function audio(){try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();if(ctx.state==='suspended')ctx.resume();}catch(e){}}
+function pitar(){
+  try{audio();if(ctx)[0,.35,.7].forEach(function(t){var o=ctx.createOscillator(),g=ctx.createGain(),n=ctx.currentTime+t;
+    o.frequency.value=880;o.connect(g);g.connect(ctx.destination);g.gain.setValueAtTime(.0001,n);g.gain.exponentialRampToValueAtTime(.5,n+.02);g.gain.exponentialRampToValueAtTime(.0001,n+.25);o.start(n);o.stop(n+.3);});}catch(e){}
+  try{if(navigator.vibrate)navigator.vibrate([300,150,300,150,300]);}catch(e){}
+}
+function lock(){try{if(navigator.wakeLock&&!wl)navigator.wakeLock.request('screen').then(function(l){wl=l;l.addEventListener('release',function(){wl=null;});}).catch(function(){});}catch(e){}}
+function unlock(){try{if(wl){wl.release().catch(function(){});wl=null;}}catch(e){}}
+function toast(m){try{etToast(m);}catch(e){}}
+
+/* ───────── tic ───────── */
+function tic(){
+  ['partido','sesion'].forEach(function(k){
+    var o=S[k];if(!o.running)return;
+    if(rem(k)<=0&&!o.avisado){
+      o.avisado=true;save();pitar();
+      if(k==='partido')toast('⏱ Fin del cuarto '+o.cuarto);
+      else{var b=o.bloques[o.bloque],nx=o.bloques[o.bloque+1];toast('⏱ Fin de «'+b.n+'»'+(nx?' · siguiente: '+nx.n:' · sesión terminada'));}
+      if(abierto)pintar();
+    }
+  });
+  var k=corriendo();
+  if(k){lock();}else{unlock();}
+  pintaBoton();
+  if(abierto){var t=document.getElementById('xr-time');if(t){var m=S.modo,r=rem(m);t.textContent=fmt(r);t.style.color=r<0?'#DC2626':(r<=60000?'#D97706':'#1E293B');}}
+}
+function ajustaTic(){
+  var k=corriendo();
+  if(k&&!tickId)tickId=setInterval(tic,250);
+  if(!k&&tickId){clearInterval(tickId);tickId=null;}
+}
+document.addEventListener('visibilitychange',function(){if(!document.hidden){try{if(corriendo()&&!wl)lock();tic();}catch(e){}}});
+
+/* ───────── acciones ───────── */
+function ini(k){var o=S[k];o.running=false;o.acum=0;o.t0=0;o.avisado=false;}
+function alterna(){
+  var k=S.modo,o=S[k];audio();
+  if(o.running){o.acum=el(k);o.running=false;}
+  else{var otro=k==='partido'?'sesion':'partido';if(S[otro].running){S[otro].acum=el(otro);S[otro].running=false;}
+    o.t0=Date.now();o.running=true;if(rem(k)>0)o.avisado=false;lock();}
+  save();ajustaTic();pintar();tic();
+}
+function reinicia(){ini(S.modo);save();ajustaTic();pintar();pintaBoton();}
+function ajusta(min){var o=S[S.modo];o.acum-=min*60000;if(rem(S.modo)>0)o.avisado=false;save();pintar();tic();}
+function sig(d){
+  if(S.modo==='partido'){var c=S.partido.cuarto+d;if(c<1||c>4)return;S.partido.cuarto=c;ini('partido');}
+  else{var b=S.sesion.bloque+d;if(b<0||b>=S.sesion.bloques.length)return;S.sesion.bloque=b;ini('sesion');}
+  save();ajustaTic();pintar();pintaBoton();
+}
+function cargaSesion(id){
+  try{
+    var s=arr(SES_LIBRES).find(function(x){return x.id===id;});if(!s)return;
+    var L=[['Calentamiento',+s.cal_min],[s.ej1_nom||'Ejercicio 1',+s.ej1_min],[s.ej2_nom||'Ejercicio 2',+s.ej2_min],[s.ej3_nom||'Ejercicio 3',+s.ej3_min],['Partido',+s.partido_min],['Vuelta a la calma',+s.vuelta_min]]
+      .filter(function(b){return b[1]>0;});
+    if(!L.length){toast('Esa sesión no tiene minutos por bloque');return;}
+    S.sesion.bloques=L.map(function(b){return {n:b[0],m:b[1]};});S.sesion.bloque=0;ini('sesion');save();ajustaTic();pintar();pintaBoton();
+  }catch(e){warn('cargar',e);}
+}
+function arr(x){try{return toArr(x);}catch(e){return Array.isArray(x)?x:(x?Object.values(x):[]);}}
+
+/* ───────── interfaz ───────── */
+function css(){
+  var s=document.createElement('style');
+  s.textContent=
+  '#ext-reloj-btn{position:fixed;right:10px;bottom:calc(66px + env(safe-area-inset-bottom,0px));z-index:900;background:#0F766E;color:#fff;border:none;border-radius:50%;width:46px;height:46px;padding:0;font-weight:800;font-size:9px;line-height:1.1;box-shadow:0 3px 10px rgba(0,0,0,.28);display:none}'+
+  '#ext-reloj-btn span{display:block;font-size:17px}#ext-reloj-btn.run{background:#16A34A}#ext-reloj-btn.run span{font-size:11px;letter-spacing:-.3px}#ext-reloj-btn.fin{background:#DC2626}'+
+  '#ext-reloj{position:fixed;inset:0;z-index:9400;background:rgba(15,23,42,.5);display:none}'+
+  '#ext-reloj .xr-p{position:absolute;left:0;right:0;bottom:0;max-height:88vh;overflow:auto;background:#fff;border-radius:18px 18px 0 0;padding:14px 14px calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 -6px 24px rgba(0,0,0,.25)}'+
+  '#ext-reloj .xr-chip{border:1px solid #94A3B8;background:#fff;color:#475569;border-radius:16px;padding:7px 14px;font-weight:700;font-size:13px}#ext-reloj .xr-chip.on{background:#1E3A5F;color:#fff;border-color:#1E3A5F}'+
+  '#ext-reloj .xr-b{border:1px solid #CBD5E1;background:#F8FAFC;border-radius:10px;padding:10px 14px;font-weight:700;font-size:14px;color:#1E293B}#ext-reloj .xr-b:disabled{opacity:.4}'+
+  '#ext-reloj .xr-go{background:#16A34A;color:#fff;border:none;font-size:18px;padding:14px 0;flex:1;border-radius:12px;font-weight:800}#ext-reloj .xr-go.stop{background:#D97706}'+
+  '#ext-reloj input,#ext-reloj select{font-size:15px;padding:7px;border:1px solid #CBD5E1;border-radius:8px;max-width:100%}';
+  document.head.appendChild(s);
+}
+function pintaBoton(){
+  if(!btn)return;var k=corriendo();
+  if(k){var r=rem(k);btn.className=(r<0?'fin':'run');btn.innerHTML='<span>'+fmt(r)+'</span>';}
+  else{btn.className='';btn.innerHTML='<span>⏱</span>Reloj';}
+}
+function visibleBtn(){
+  try{var campo=document.getElementById('ext-campo');
+    return !!(typeof currentRole!=='undefined'&&currentRole)&&!abierto&&!(campo&&campo.style.display==='block');}catch(e){return false;}
+}
+function sub(){var o=S[S.modo];return S.modo==='partido'?'Cuarto '+o.cuarto+' de 4 · '+o.cuartoMin+' min':'Bloque '+(o.bloque+1)+' de '+o.bloques.length+' · '+o.bloques[o.bloque].m+' min';}
+function tot(){return 'Bloques · '+S.sesion.bloques.reduce(function(s,x){return s+(+x.m||0);},0)+' min';}
+function liv(){var a=document.getElementById('xr-sub'),b=document.getElementById('xr-tot');if(a)a.textContent=sub();if(b)b.textContent=tot();}
+function pintar(){
+  if(!ov)return;
+  var k=S.modo,o=S[k],r=rem(k),h='';
+  h+='<div class="xr-p"><div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">'+
+    '<span class="xr-chip'+(k==='partido'?' on':'')+'" data-m="partido">⚽ Partido</span><span class="xr-chip'+(k==='sesion'?' on':'')+'" data-m="sesion">📋 Sesión</span>'+
+    '<button class="xr-b" id="xr-x" style="margin-left:auto">✕</button></div>';
+  if(k==='partido'){
+    h+='<div style="display:flex;gap:6px;justify-content:center;margin-bottom:4px">'+[1,2,3,4].map(function(c){return '<span class="xr-chip'+(S.partido.cuarto===c?' on':'')+'" data-q="'+c+'">'+c+'.º</span>';}).join('')+'</div>'+
+      '<div id="xr-sub" style="text-align:center;font-size:13px;color:#64748B">'+sub()+'</div>';
+  }else{
+    var b=o.bloques[o.bloque];
+    h+='<div style="text-align:center;font-size:17px;font-weight:800;color:#1E3A5F">'+E(b.n)+'</div><div id="xr-sub" style="text-align:center;font-size:13px;color:#64748B">'+sub()+'</div>';
+  }
+  h+='<div id="xr-time" style="text-align:center;font-size:76px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1;margin:6px 0 10px;color:'+(r<0?'#DC2626':(r<=60000?'#D97706':'#1E293B')+'')+'">'+fmt(r)+'</div>';
+  h+='<div style="display:flex;gap:8px;margin-bottom:8px"><button class="xr-go'+(o.running?' stop':'')+'" id="xr-go">'+(o.running?'⏸ Pausar':(o.acum>0?'▶ Seguir':'▶ Iniciar'))+'</button><button class="xr-b" id="xr-rs">↺</button></div>';
+  h+='<div style="display:flex;gap:8px;margin-bottom:8px"><button class="xr-b" id="xr-m1" style="flex:1">−1 min</button><button class="xr-b" id="xr-p1" style="flex:1">+1 min</button></div>';
+  if(k==='partido'){
+    h+='<div style="display:flex;gap:8px;margin-bottom:10px"><button class="xr-b" id="xr-pr" style="flex:1"'+(o.cuarto<=1?' disabled':'')+'>‹ Cuarto anterior</button><button class="xr-b" id="xr-nx" style="flex:1"'+(o.cuarto>=4?' disabled':'')+'>Siguiente cuarto ›</button></div>'+
+      '<label style="font-size:13px;color:#475569">Minutos por cuarto <input id="xr-cm" type="number" min="1" max="60" value="'+o.cuartoMin+'" style="width:70px;margin-left:6px"></label>';
+  }else{
+    h+='<div style="display:flex;gap:8px;margin-bottom:10px"><button class="xr-b" id="xr-pr" style="flex:1"'+(o.bloque<=0?' disabled':'')+'>‹ Anterior</button><button class="xr-b" id="xr-nx" style="flex:1"'+(o.bloque>=o.bloques.length-1?' disabled':'')+'>Siguiente bloque ›</button></div>'+
+      '<div id="xr-tot" style="font-size:12px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">'+tot()+'</div>'+
+      o.bloques.map(function(x,i){return '<div style="display:flex;gap:8px;align-items:center;padding:4px 6px;border-radius:8px;'+(i===o.bloque?'background:#F0FDF4':'')+'"><div style="flex:1;font-size:13px;font-weight:'+(i===o.bloque?'800':'600')+'">'+E(x.n)+'</div><input data-bm="'+i+'" type="number" min="1" max="90" value="'+x.m+'" style="width:64px"><span style="font-size:12px;color:#64748B">min</span></div>';}).join('');
+    var L=[];try{L=arr(SES_LIBRES).filter(function(s){return (+s.cal_min||0)+(+s.ej1_min||0)+(+s.ej2_min||0)+(+s.ej3_min||0)+(+s.partido_min||0)+(+s.vuelta_min||0)>0;});}catch(e){}
+    if(L.length)h+='<div style="margin-top:10px;display:flex;gap:6px;align-items:center"><select id="xr-ls" style="flex:1;min-width:0">'+L.map(function(s){return '<option value="'+E(s.id)+'">'+E(s.tema||'Sesión')+'</option>';}).join('')+'</select><button class="xr-b" id="xr-ld">Cargar</button></div>'+
+      '<div style="font-size:11px;color:#94A3B8;margin-top:4px">Carga los minutos de una sesión de «Mis Sesiones».</div>';
+    h+='<div style="margin-top:8px"><button class="xr-b" id="xr-df" style="font-size:12px">Plan estándar 90′</button></div>';
+  }
+  h+='<div style="font-size:11px;color:#94A3B8;margin-top:10px">Mientras el reloj corre, la pantalla se mantiene encendida. Avisa con sonido y vibración al llegar a cero.</div></div>';
+  ov.innerHTML=h;
+  var q=function(s){return ov.querySelector(s);};
+  ov.onclick=function(e){if(e.target===ov)cerrar();};
+  q('#xr-x').onclick=cerrar;q('#xr-go').onclick=alterna;q('#xr-rs').onclick=reinicia;
+  q('#xr-m1').onclick=function(){ajusta(-1);};q('#xr-p1').onclick=function(){ajusta(1);};
+  q('#xr-pr').onclick=function(){sig(-1);};q('#xr-nx').onclick=function(){sig(1);};
+  ov.querySelectorAll('[data-m]').forEach(function(c){c.onclick=function(){S.modo=c.getAttribute('data-m');save();pintar();};});
+  ov.querySelectorAll('[data-q]').forEach(function(c){c.onclick=function(){var n=+c.getAttribute('data-q');if(n!==S.partido.cuarto){S.partido.cuarto=n;ini('partido');save();ajustaTic();pintar();pintaBoton();}};});
+  var cm=q('#xr-cm');if(cm)cm.onchange=function(){var v=Math.max(1,Math.min(60,Math.round(+cm.value)||15));S.partido.cuartoMin=v;cm.value=v;if(rem('partido')>0)S.partido.avisado=false;save();liv();tic();};
+  ov.querySelectorAll('[data-bm]').forEach(function(i){i.onchange=function(){var v=Math.max(1,Math.min(90,Math.round(+i.value)||1));S.sesion.bloques[+i.getAttribute('data-bm')].m=v;i.value=v;if(rem('sesion')>0)S.sesion.avisado=false;save();liv();tic();};});
+  var ld=q('#xr-ld');if(ld)ld.onclick=function(){cargaSesion(q('#xr-ls').value);};
+  var df=q('#xr-df');if(df)df.onclick=function(){S.sesion.bloques=DEF_BLOQUES.map(function(b){return {n:b[0],m:b[1]};});S.sesion.bloque=0;ini('sesion');save();ajustaTic();pintar();pintaBoton();};
+}
+function abrir(){abierto=true;ov.style.display='block';btn.style.display='none';pintar();}
+function cerrar(){abierto=false;ov.style.display='none';pintaBoton();}
+
+function init(){
+  try{
+    load();css();
+    btn=document.createElement('button');btn.id='ext-reloj-btn';btn.title='Reloj: cronómetro de partido y de sesión';btn.onclick=abrir;document.body.appendChild(btn);
+    ov=document.createElement('div');ov.id='ext-reloj';document.body.appendChild(ov);
+    pintaBoton();ajustaTic();
+    setInterval(function(){try{btn.style.display=visibleBtn()?'block':'none';}catch(e){}},800);
+    if(corriendo())tic();
+  }catch(e){warn('init',e);}
+}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script>
