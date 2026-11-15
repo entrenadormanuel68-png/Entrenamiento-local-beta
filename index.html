@@ -9244,10 +9244,11 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 (function(){
 'use strict';
 var KEY='ext_reloj_v1';
-var DEF_BLOQUES=[['Calentamiento',10],['Ejercicio 1',15],['Ejercicio 2',20],['Ejercicio 3',10],['Partido',30],['Vuelta a la calma',5]];
+var DEF_BLOQUES=[['Calentamiento',10],['Ejercicio 1',15],['Ejercicio 2',15],['Ejercicio 3',15],['Partido condicionado',30],['Vuelta a la calma',5]];
+var STD=[10,15,15,15,30,5],OLD_DEF=[10,15,20,10,30,5];   // plan estándar de 90′ (norma del club)
 var S={modo:'partido',
   partido:{cuartoMin:15,cuarto:1,running:false,t0:0,acum:0,avisado:false},
-  sesion:{bloques:DEF_BLOQUES.map(function(b){return {n:b[0],m:b[1]};}),bloque:0,running:false,t0:0,acum:0,avisado:false}};
+  sesion:{bloques:DEF_BLOQUES.map(function(b){return {n:b[0],m:b[1]};}),bloque:0,running:false,t0:0,acum:0,avisado:false,fuente:''},planes:{}};
 var abierto=false,btn=null,ov=null,ctx=null,wl=null,tickId=null;
 function warn(m,e){try{console.warn('[ext-reloj] '+m,e||'');}catch(_){}}
 function E(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
@@ -9255,6 +9256,8 @@ function load(){try{var r=JSON.parse(localStorage.getItem(KEY)||'null');if(!r)re
   if(r.modo==='sesion'||r.modo==='partido')S.modo=r.modo;
   ['partido','sesion'].forEach(function(k){if(r[k])Object.keys(r[k]).forEach(function(x){S[k][x]=r[k][x];});});
   var b=S.sesion.bloques;if(!Array.isArray(b)||!b.length)S.sesion.bloques=DEF_BLOQUES.map(function(x){return {n:x[0],m:x[1]};});
+  if(r.planes&&typeof r.planes==='object')S.planes=r.planes;
+  if(!S.sesion.fuente&&S.sesion.bloques.map(function(x){return +x.m;}).join()===OLD_DEF.join())S.sesion.bloques=DEF_BLOQUES.map(function(x){return {n:x[0],m:x[1]};});
   if(S.sesion.bloque>=S.sesion.bloques.length)S.sesion.bloque=0;
   var cm=+S.partido.cuartoMin;S.partido.cuartoMin=(cm>=1&&cm<=60)?cm:15;
   var c=+S.partido.cuarto;S.partido.cuarto=(c>=1&&c<=4)?c:1;
@@ -9268,11 +9271,17 @@ function corriendo(){return S.partido.running?'partido':(S.sesion.running?'sesio
 
 /* ───────── aviso (sonido + vibración) y pantalla encendida ───────── */
 function audio(){try{ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();if(ctx.state==='suspended')ctx.resume();}catch(e){}}
-function pitar(){
-  try{audio();if(ctx)[0,.35,.7].forEach(function(t){var o=ctx.createOscillator(),g=ctx.createGain(),n=ctx.currentTime+t;
-    o.frequency.value=880;o.connect(g);g.connect(ctx.destination);g.gain.setValueAtTime(.0001,n);g.gain.exponentialRampToValueAtTime(.5,n+.02);g.gain.exponentialRampToValueAtTime(.0001,n+.25);o.start(n);o.stop(n+.3);});}catch(e){}
-  try{if(navigator.vibrate)navigator.vibrate([300,150,300,150,300]);}catch(e){}
+var alertaId=null;
+function una(){
+  try{audio();if(ctx){var o=ctx.createOscillator(),g=ctx.createGain(),n=ctx.currentTime;o.frequency.value=880;o.connect(g);g.connect(ctx.destination);
+    g.gain.setValueAtTime(.0001,n);g.gain.exponentialRampToValueAtTime(.5,n+.02);g.gain.exponentialRampToValueAtTime(.0001,n+.45);o.start(n);o.stop(n+.5);}}catch(e){}
+  try{if(navigator.vibrate)navigator.vibrate(350);}catch(e){}
 }
+function pitar(){      // aviso final: unos 10 segundos (pitido cada 0,8 s). Se silencia con cualquier toque en el reloj.
+  detener();var fin=Date.now()+10000;una();
+  alertaId=setInterval(function(){if(Date.now()>=fin){detener();if(abierto)pintar();return;}una();},800);
+}
+function detener(){if(alertaId){clearInterval(alertaId);alertaId=null;}try{if(navigator.vibrate)navigator.vibrate(0);}catch(e){}}
 function lock(){try{if(navigator.wakeLock&&!wl)navigator.wakeLock.request('screen').then(function(l){wl=l;l.addEventListener('release',function(){wl=null;});}).catch(function(){});}catch(e){}}
 function unlock(){try{if(wl){wl.release().catch(function(){});wl=null;}}catch(e){}}
 function toast(m){try{etToast(m);}catch(e){}}
@@ -9303,28 +9312,40 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden){try
 /* ───────── acciones ───────── */
 function ini(k){var o=S[k];o.running=false;o.acum=0;o.t0=0;o.avisado=false;}
 function alterna(){
-  var k=S.modo,o=S[k];audio();
+  var k=S.modo,o=S[k];audio();detener();
   if(o.running){o.acum=el(k);o.running=false;}
   else{var otro=k==='partido'?'sesion':'partido';if(S[otro].running){S[otro].acum=el(otro);S[otro].running=false;}
     o.t0=Date.now();o.running=true;if(rem(k)>0)o.avisado=false;lock();}
   save();ajustaTic();pintar();tic();
 }
-function reinicia(){ini(S.modo);save();ajustaTic();pintar();pintaBoton();}
-function ajusta(min){var o=S[S.modo];o.acum-=min*60000;if(rem(S.modo)>0)o.avisado=false;save();pintar();tic();}
+function reinicia(){detener();ini(S.modo);save();ajustaTic();pintar();pintaBoton();}
+function ajusta(min){detener();var o=S[S.modo];o.acum-=min*60000;if(rem(S.modo)>0)o.avisado=false;save();pintar();tic();}
 function sig(d){
+  detener();
   if(S.modo==='partido'){var c=S.partido.cuarto+d;if(c<1||c>4)return;S.partido.cuarto=c;ini('partido');}
   else{var b=S.sesion.bloque+d;if(b<0||b>=S.sesion.bloques.length)return;S.sesion.bloque=b;ini('sesion');}
   save();ajustaTic();pintar();pintaBoton();
 }
-function cargaSesion(id){
-  try{
-    var s=arr(SES_LIBRES).find(function(x){return x.id===id;});if(!s)return;
-    var L=[['Calentamiento',+s.cal_min],[s.ej1_nom||'Ejercicio 1',+s.ej1_min],[s.ej2_nom||'Ejercicio 2',+s.ej2_min],[s.ej3_nom||'Ejercicio 3',+s.ej3_min],['Partido',+s.partido_min],['Vuelta a la calma',+s.vuelta_min]]
-      .filter(function(b){return b[1]>0;});
-    if(!L.length){toast('Esa sesión no tiene minutos por bloque');return;}
-    S.sesion.bloques=L.map(function(b){return {n:b[0],m:b[1]};});S.sesion.bloque=0;ini('sesion');save();ajustaTic();pintar();pintaBoton();
-  }catch(e){warn('cargar',e);}
+function fuentes(){
+  var out=[];
+  try{arr(SESIONES).filter(function(x){return !x.estado&&!x.completada;}).sort(function(a,b){return a.num-b.num;}).forEach(function(x){out.push({k:'c'+x.num,g:'Calendario (pendientes)',l:'Ses. '+x.num+' · '+(x.tema||'')});});}catch(e){}
+  try{arr(SES_LIBRES).forEach(function(x){out.push({k:'l'+x.id,g:'Mis Sesiones',l:x.tema||'Sesión'});});}catch(e){}
+  return out;
 }
+function bloquesDe(key){
+  var t=key.charAt(0),id=key.slice(1),x;
+  try{x=t==='c'?arr(SESIONES).find(function(y){return String(y.num)===id;}):arr(SES_LIBRES).find(function(y){return String(y.id)===id;});}catch(e){}
+  if(!x)return null;
+  var nom=function(v,d){v=String(v||'').trim();return v?(v.length>38?v.slice(0,36)+'…':v):d;};
+  var L=[['Calentamiento',x.cal_min],[nom(x.ej1_nom,'Ejercicio 1'),x.ej1_min],[nom(x.ej2_nom,'Ejercicio 2'),x.ej2_min],[nom(x.ej3_nom,'Ejercicio 3'),x.ej3_min],['Partido condicionado',x.partido_min],['Vuelta a la calma',x.vuelta_min]];
+  var plan=S.planes[key];
+  return L.map(function(b,i){return {n:b[0],m:(plan&&+plan[i]>0)?+plan[i]:((+b[1]>0)?+b[1]:STD[i])};});
+}
+function cargar(key){
+  var b=bloquesDe(key);if(!b){toast('No se encontró la sesión');return;}
+  detener();S.sesion.bloques=b;S.sesion.bloque=0;S.sesion.fuente=key;ini('sesion');save();ajustaTic();pintar();pintaBoton();
+}
+window.extRelojCargar=function(key){cargar(key);S.modo='sesion';save();if(!abierto)abrir();else pintar();};
 function arr(x){try{return toArr(x);}catch(e){return Array.isArray(x)?x:(x?Object.values(x):[]);}}
 
 /* ───────── interfaz ───────── */
@@ -9333,12 +9354,12 @@ function css(){
   s.textContent=
   '#ext-reloj-btn{position:fixed;right:10px;bottom:calc(66px + env(safe-area-inset-bottom,0px));z-index:900;background:#0F766E;color:#fff;border:none;border-radius:50%;width:46px;height:46px;padding:0;font-weight:800;font-size:9px;line-height:1.1;box-shadow:0 3px 10px rgba(0,0,0,.28);display:none}'+
   '#ext-reloj-btn span{display:block;font-size:17px}#ext-reloj-btn.run{background:#16A34A}#ext-reloj-btn.run span{font-size:11px;letter-spacing:-.3px}#ext-reloj-btn.fin{background:#DC2626}'+
-  '#ext-reloj{position:fixed;inset:0;z-index:9400;background:rgba(15,23,42,.5);display:none}'+
-  '#ext-reloj .xr-p{position:absolute;left:0;right:0;bottom:0;max-height:88vh;overflow:auto;background:#fff;border-radius:18px 18px 0 0;padding:14px 14px calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 -6px 24px rgba(0,0,0,.25)}'+
-  '#ext-reloj .xr-chip{border:1px solid #94A3B8;background:#fff;color:#475569;border-radius:16px;padding:7px 14px;font-weight:700;font-size:13px}#ext-reloj .xr-chip.on{background:#1E3A5F;color:#fff;border-color:#1E3A5F}'+
-  '#ext-reloj .xr-b{border:1px solid #CBD5E1;background:#F8FAFC;border-radius:10px;padding:10px 14px;font-weight:700;font-size:14px;color:#1E293B}#ext-reloj .xr-b:disabled{opacity:.4}'+
-  '#ext-reloj .xr-go{background:#16A34A;color:#fff;border:none;font-size:18px;padding:14px 0;flex:1;border-radius:12px;font-weight:800}#ext-reloj .xr-go.stop{background:#D97706}'+
-  '#ext-reloj input,#ext-reloj select{font-size:15px;padding:7px;border:1px solid #CBD5E1;border-radius:8px;max-width:100%}';
+  '#ext-reloj-panel{position:fixed;inset:0;z-index:9400;background:rgba(15,23,42,.5);display:none}'+
+  '#ext-reloj-panel .xr-p{position:absolute;left:0;right:0;bottom:0;max-height:88vh;overflow:auto;background:#fff;border-radius:18px 18px 0 0;padding:14px 14px calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 -6px 24px rgba(0,0,0,.25)}'+
+  '#ext-reloj-panel .xr-chip{border:1px solid #94A3B8;background:#fff;color:#475569;border-radius:16px;padding:7px 14px;font-weight:700;font-size:13px}#ext-reloj-panel .xr-chip.on{background:#1E3A5F;color:#fff;border-color:#1E3A5F}'+
+  '#ext-reloj-panel .xr-b{border:1px solid #CBD5E1;background:#F8FAFC;border-radius:10px;padding:10px 14px;font-weight:700;font-size:14px;color:#1E293B}#ext-reloj-panel .xr-b:disabled{opacity:.4}'+
+  '#ext-reloj-panel .xr-go{background:#16A34A;color:#fff;border:none;font-size:18px;padding:14px 0;flex:1;border-radius:12px;font-weight:800}#ext-reloj-panel .xr-go.stop{background:#D97706}'+
+  '#ext-reloj-panel input,#ext-reloj-panel select{font-size:15px;padding:7px;border:1px solid #CBD5E1;border-radius:8px;max-width:100%}';
   document.head.appendChild(s);
 }
 function pintaBoton(){
@@ -9356,7 +9377,7 @@ function liv(){var a=document.getElementById('xr-sub'),b=document.getElementById
 function pintar(){
   if(!ov)return;
   var k=S.modo,o=S[k],r=rem(k),h='';
-  h+='<div class="xr-p"><div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">'+
+  h+='<div class="xr-p">'+(alertaId?'<button id="xr-sil" style="width:100%;background:#DC2626;color:#fff;border:none;border-radius:10px;padding:12px;font-weight:800;font-size:15px;margin-bottom:10px">🔇 Silenciar aviso</button>':'')+'<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">'+
     '<span class="xr-chip'+(k==='partido'?' on':'')+'" data-m="partido">⚽ Partido</span><span class="xr-chip'+(k==='sesion'?' on':'')+'" data-m="sesion">📋 Sesión</span>'+
     '<button class="xr-b" id="xr-x" style="margin-left:auto">✕</button></div>';
   if(k==='partido'){
@@ -9376,33 +9397,48 @@ function pintar(){
     h+='<div style="display:flex;gap:8px;margin-bottom:10px"><button class="xr-b" id="xr-pr" style="flex:1"'+(o.bloque<=0?' disabled':'')+'>‹ Anterior</button><button class="xr-b" id="xr-nx" style="flex:1"'+(o.bloque>=o.bloques.length-1?' disabled':'')+'>Siguiente bloque ›</button></div>'+
       '<div id="xr-tot" style="font-size:12px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">'+tot()+'</div>'+
       o.bloques.map(function(x,i){return '<div style="display:flex;gap:8px;align-items:center;padding:4px 6px;border-radius:8px;'+(i===o.bloque?'background:#F0FDF4':'')+'"><div style="flex:1;font-size:13px;font-weight:'+(i===o.bloque?'800':'600')+'">'+E(x.n)+'</div><input data-bm="'+i+'" type="number" min="1" max="90" value="'+x.m+'" style="width:64px"><span style="font-size:12px;color:#64748B">min</span></div>';}).join('');
-    var L=[];try{L=arr(SES_LIBRES).filter(function(s){return (+s.cal_min||0)+(+s.ej1_min||0)+(+s.ej2_min||0)+(+s.ej3_min||0)+(+s.partido_min||0)+(+s.vuelta_min||0)>0;});}catch(e){}
-    if(L.length)h+='<div style="margin-top:10px;display:flex;gap:6px;align-items:center"><select id="xr-ls" style="flex:1;min-width:0">'+L.map(function(s){return '<option value="'+E(s.id)+'">'+E(s.tema||'Sesión')+'</option>';}).join('')+'</select><button class="xr-b" id="xr-ld">Cargar</button></div>'+
-      '<div style="font-size:11px;color:#94A3B8;margin-top:4px">Carga los minutos de una sesión de «Mis Sesiones».</div>';
+    var F=fuentes(),sel=o.fuente||(F[0]&&F[0].k),grp='';
+    if(F.length){
+      h+='<div style="margin-top:10px;display:flex;gap:6px;align-items:center"><select id="xr-ls" style="flex:1;min-width:0">';
+      F.forEach(function(x){if(x.g!==grp){if(grp)h+='</optgroup>';h+='<optgroup label="'+E(x.g)+'">';grp=x.g;}h+='<option value="'+E(x.k)+'"'+(x.k===sel?' selected':'')+'>'+E(x.l)+'</option>';});
+      h+='</optgroup></select><button class="xr-b" id="xr-ld">Cargar</button></div><div style="font-size:11px;color:#94A3B8;margin-top:4px">Carga los bloques de la sesión. Si no tiene minutos guardados, usa el plan estándar 10-15-15-15-30-5. Lo que cambies aquí se recuerda para esa sesión.</div>';
+    }
     h+='<div style="margin-top:8px"><button class="xr-b" id="xr-df" style="font-size:12px">Plan estándar 90′</button></div>';
   }
   h+='<div style="font-size:11px;color:#94A3B8;margin-top:10px">Mientras el reloj corre, la pantalla se mantiene encendida. Avisa con sonido y vibración al llegar a cero.</div></div>';
   ov.innerHTML=h;
   var q=function(s){return ov.querySelector(s);};
   ov.onclick=function(e){if(e.target===ov)cerrar();};
-  q('#xr-x').onclick=cerrar;q('#xr-go').onclick=alterna;q('#xr-rs').onclick=reinicia;
+  q('#xr-x').onclick=cerrar;var si=q('#xr-sil');if(si)si.onclick=function(){detener();pintar();};q('#xr-go').onclick=alterna;q('#xr-rs').onclick=reinicia;
   q('#xr-m1').onclick=function(){ajusta(-1);};q('#xr-p1').onclick=function(){ajusta(1);};
   q('#xr-pr').onclick=function(){sig(-1);};q('#xr-nx').onclick=function(){sig(1);};
   ov.querySelectorAll('[data-m]').forEach(function(c){c.onclick=function(){S.modo=c.getAttribute('data-m');save();pintar();};});
   ov.querySelectorAll('[data-q]').forEach(function(c){c.onclick=function(){var n=+c.getAttribute('data-q');if(n!==S.partido.cuarto){S.partido.cuarto=n;ini('partido');save();ajustaTic();pintar();pintaBoton();}};});
   var cm=q('#xr-cm');if(cm)cm.onchange=function(){var v=Math.max(1,Math.min(60,Math.round(+cm.value)||15));S.partido.cuartoMin=v;cm.value=v;if(rem('partido')>0)S.partido.avisado=false;save();liv();tic();};
-  ov.querySelectorAll('[data-bm]').forEach(function(i){i.onchange=function(){var v=Math.max(1,Math.min(90,Math.round(+i.value)||1));S.sesion.bloques[+i.getAttribute('data-bm')].m=v;i.value=v;if(rem('sesion')>0)S.sesion.avisado=false;save();liv();tic();};});
-  var ld=q('#xr-ld');if(ld)ld.onclick=function(){cargaSesion(q('#xr-ls').value);};
-  var df=q('#xr-df');if(df)df.onclick=function(){S.sesion.bloques=DEF_BLOQUES.map(function(b){return {n:b[0],m:b[1]};});S.sesion.bloque=0;ini('sesion');save();ajustaTic();pintar();pintaBoton();};
+  ov.querySelectorAll('[data-bm]').forEach(function(i){i.onchange=function(){var v=Math.max(1,Math.min(90,Math.round(+i.value)||1));S.sesion.bloques[+i.getAttribute('data-bm')].m=v;i.value=v;if(S.sesion.fuente)S.planes[S.sesion.fuente]=S.sesion.bloques.map(function(x){return x.m;});if(rem('sesion')>0)S.sesion.avisado=false;save();liv();tic();};});
+  var ld=q('#xr-ld');if(ld)ld.onclick=function(){cargar(q('#xr-ls').value);};
+  var df=q('#xr-df');if(df)df.onclick=function(){detener();if(S.sesion.fuente){delete S.planes[S.sesion.fuente];var bb=bloquesDe(S.sesion.fuente);if(bb)S.sesion.bloques=bb;}else S.sesion.bloques=DEF_BLOQUES.map(function(b){return {n:b[0],m:b[1]};});S.sesion.bloque=0;ini('sesion');save();ajustaTic();pintar();pintaBoton();};
 }
-function abrir(){abierto=true;ov.style.display='block';btn.style.display='none';pintar();}
+function abrir(){detener();abierto=true;ov.style.display='block';btn.style.display='none';pintar();}
 function cerrar(){abierto=false;ov.style.display='none';pintaBoton();}
 
+function wrap(n,fn){var o=window[n];if(typeof o!=='function')return;window[n]=function(){var rr=o.apply(this,arguments);try{fn.apply(this,arguments);}catch(e){warn(n,e);}return rr;};}
+function planTxt(key){var b=bloquesDe(key);if(!b)return '';return b.map(function(x){return x.m+'′';}).join(' · ')+' = '+b.reduce(function(s,x){return s+x.m;},0)+'′';}
+function anade(detId,key){
+  var det=document.getElementById(detId);if(!det||!det.firstElementChild)return;
+  det.querySelectorAll('.xr-strip').forEach(function(n){n.remove();});
+  var bar=det.firstElementChild;
+  var b=document.createElement('button');b.className='btn btn-ghost btn-sm';b.textContent='⏱ Reloj';b.title='Cargar esta sesión en el reloj';b.onclick=function(){extRelojCargar(key);};bar.appendChild(b);
+  bar.insertAdjacentHTML('afterend','<div class="xr-strip" style="font-size:12px;color:#0F766E;background:#F0FDFA;border-radius:8px;padding:6px 10px;margin:6px 0">⏱ Tiempos: '+E(planTxt(key))+'</div>');
+}
+wrap('renderSesionDetalle',function(){if(typeof sesionAbierta!=='undefined'&&sesionAbierta!=null)anade('ses-detalle','c'+sesionAbierta);});
+wrap('renderSesLibreDetalle',function(){if(typeof sesLibreAbierta!=='undefined'&&sesLibreAbierta)anade('mses-detalle','l'+sesLibreAbierta);});
+function placeholders(){[['mses-cal-min',10],['mses-ej1-min',15],['mses-ej2-min',15],['mses-ej3-min',15],['mses-partido-min',30],['mses-vuelta-min',5]].forEach(function(p){var e=document.getElementById(p[0]);if(e)e.placeholder=p[1];});}
 function init(){
   try{
-    load();css();
+    load();css();placeholders();
     btn=document.createElement('button');btn.id='ext-reloj-btn';btn.title='Reloj: cronómetro de partido y de sesión';btn.onclick=abrir;document.body.appendChild(btn);
-    ov=document.createElement('div');ov.id='ext-reloj';document.body.appendChild(ov);
+    ov=document.createElement('div');ov.id='ext-reloj-panel';document.body.appendChild(ov);
     pintaBoton();ajustaTic();
     setInterval(function(){try{btn.style.display=visibleBtn()?'block':'none';}catch(e){}},800);
     if(corriendo())tic();
