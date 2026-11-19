@@ -3539,9 +3539,9 @@ function renderSesLibreDetalle(){
       ${prov?`<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:6px;padding:7px 10px"><div style="font-size:9px;font-weight:700;color:#C2410C;text-transform:uppercase;margin-bottom:2px">🎯 Regla de Provocación</div><p style="font-size:12px;color:#C2410C;font-style:italic;margin:0">${prov}</p></div>`:''}
     ${s['ej'+n+'_dib']?etImgHTML(s['ej'+n+'_dib']):''}
     </div>`:'';
-  const g2Box=(tit,nom,desc,prov)=>`<div style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:10px;padding:13px;margin-top:8px"><div style="font-size:10px;font-weight:700;color:#6D28D9;text-transform:uppercase;margin-bottom:5px">👥 ${tit} · Grupo 2</div>${nom?`<div style="font-weight:700;font-size:13px;color:#1e293b;margin-bottom:5px">${esc(nom)}</div>`:''}${desc?`<p style="font-size:12px;color:#475569;margin:0 0 6px;line-height:1.5;white-space:pre-line">${esc(desc)}</p>`:''}${prov?`<div style="font-size:12px;color:#C2410C">🎯 ${esc(prov)}</div>`:''}</div>`;
-  const ejG=n=>`<div>${ejBlock(s['ej'+n+'_nom'],s['ej'+n+'_desc'],s['ej'+n+'_prov'],s['ej'+n+'_min'],n)}${s['ej'+n+'_g2on']?g2Box('Ejercicio '+n,s['ej'+n+'_g2nom'],s['ej'+n+'_g2desc'],s['ej'+n+'_g2prov']):''}</div>`;
-  const calG2=s.cal_g2on&&s.cal_g2desc?g2Box('Calentamiento','',s.cal_g2desc,''):'';
+  const g2Box=(tit,nom,desc,prov,dib)=>`<div style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:10px;padding:13px;margin-top:8px"><div style="font-size:10px;font-weight:700;color:#6D28D9;text-transform:uppercase;margin-bottom:5px">👥 ${tit} · Grupo 2</div>${nom?`<div style="font-weight:700;font-size:13px;color:#1e293b;margin-bottom:5px">${esc(nom)}</div>`:''}${desc?`<p style="font-size:12px;color:#475569;margin:0 0 6px;line-height:1.5;white-space:pre-line">${esc(desc)}</p>`:''}${prov?`<div style="font-size:12px;color:#C2410C">🎯 ${esc(prov)}</div>`:''}${dib?etImgHTML(dib):''}</div>`;
+  const ejG=n=>`<div>${ejBlock(s['ej'+n+'_nom'],s['ej'+n+'_desc'],s['ej'+n+'_prov'],s['ej'+n+'_min'],n)}${s['ej'+n+'_g2on']?g2Box('Ejercicio '+n,s['ej'+n+'_g2nom'],s['ej'+n+'_g2desc'],s['ej'+n+'_g2prov'],s['ej'+n+'_g2dib']):''}</div>`;
+  const calG2=s.cal_g2on&&s.cal_g2desc?g2Box('Calentamiento','',s.cal_g2desc,'',s.cal_g2dib):'';
   det.innerHTML=`
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="closeSesLibre()">← Mis Sesiones</button>
@@ -3613,11 +3613,13 @@ function sesLibreWA(id){
 function msesG2Init(){
   if(document.getElementById('mses-cal-g2desc'))return;
   const st='width:100%;border:1px solid #DDD6FE;border-radius:7px;padding:7px 9px;font-size:12px;outline:none;font-family:inherit;background:#FAF8FF;box-sizing:border-box;margin-top:5px';
-  const lab='<div style="font-size:10px;font-weight:700;color:#6D28D9;margin-top:8px">👥 Grupo 2 (a la vez, opcional)</div>';
+  const lab='<div style="font-size:10px;font-weight:700;color:#6D28D9;margin-top:10px;border-top:1px dashed #DDD6FE;padding-top:8px">👥 Grupo 2 (a la vez, opcional)</div>';
+  const bt=(m,k,t,c)=>'<button type="button" onclick="'+m+'" style="border:1px solid '+c[0]+';background:'+c[1]+';color:'+c[2]+';border-radius:6px;font-size:11px;font-weight:700;padding:4px 9px;cursor:pointer;margin-top:6px;margin-right:4px">'+t+'</button>';
+  const bar=k=>bt("abrirPickerBib('mses2',"+k+")",k,'📚 Biblioteca',['#DDD6FE','#F5F3FF','#6D28D9'])+bt("abrirDibujo('mses',"+(10+k)+")",k,'🎨 Dibujo',['#BBF7D0','#F0FDF4','#16A34A'])+bt("abrirPickerPiz('mses',"+(10+k)+")",k,'🎨 Usar una pizarra',['#DDD6FE','#F5F3FF','#6D28D9'])+'<div id="mses-'+(k?'ej'+k:'cal')+'-g2dibprev"></div>';
   const c=document.getElementById('mses-cal-desc');
-  if(c)c.insertAdjacentHTML('afterend',lab+'<textarea id="mses-cal-g2desc" rows="2" placeholder="Calentamiento del Grupo 2…" style="'+st+';resize:none"></textarea>');
+  if(c)c.insertAdjacentHTML('afterend',lab+'<textarea id="mses-cal-g2desc" rows="2" placeholder="Calentamiento del Grupo 2…" style="'+st+';resize:none"></textarea>'+bar(0));
   ['ej1','ej2','ej3'].forEach(e=>{const pr=document.getElementById('mses-'+e+'-prov');if(!pr)return;
-    pr.insertAdjacentHTML('afterend',lab+'<input id="mses-'+e+'-g2nom" placeholder="Nombre del ejercicio (Grupo 2)" style="'+st+'"><textarea id="mses-'+e+'-g2desc" rows="2" placeholder="Descripción (Grupo 2)…" style="'+st+';resize:none"></textarea><input id="mses-'+e+'-g2prov" placeholder="🎯 Provocación (Grupo 2, opcional)" style="'+st+'">');});
+    pr.insertAdjacentHTML('afterend',lab+'<input id="mses-'+e+'-g2nom" placeholder="Nombre del ejercicio (Grupo 2)" style="'+st+'"><textarea id="mses-'+e+'-g2desc" rows="2" placeholder="Descripción (Grupo 2)…" style="'+st+';resize:none"></textarea><input id="mses-'+e+'-g2prov" placeholder="🎯 Provocación (Grupo 2, opcional)" style="'+st+'">'+bar(+e.slice(2)));});
 }
 function openAddSesLibre(id){
   msesG2Init();
@@ -3641,7 +3643,7 @@ function openAddSesLibre(id){
   document.getElementById('mses-material').value=v('material');
   document.getElementById('mses-cal-g2desc').value=v('cal_g2desc');
   ['ej1','ej2','ej3'].forEach(e=>['nom','desc','prov'].forEach(f=>{document.getElementById(`mses-${e}-g2${f}`).value=v(`${e}_g2${f}`);}));
-  window._msesDib={0:v('cal_dib'),1:v('ej1_dib'),2:v('ej2_dib'),3:v('ej3_dib'),4:v('partido_dib'),5:v('vuelta_dib')};etRefrescarMsesDib();
+  window._msesDib={0:v('cal_dib'),1:v('ej1_dib'),2:v('ej2_dib'),3:v('ej3_dib'),4:v('partido_dib'),5:v('vuelta_dib'),10:v('cal_g2dib'),11:v('ej1_g2dib'),12:v('ej2_g2dib'),13:v('ej3_g2dib')};etRefrescarMsesDib();
 }
 
 function editSesLibre(id){openAddSesLibre(id);}
@@ -3674,7 +3676,7 @@ function guardarSesLibre(){
   };
   sesion.cal_g2desc=_gv('mses-cal-g2desc');sesion.cal_g2on=!!sesion.cal_g2desc;
   ['ej1','ej2','ej3'].forEach(e=>{sesion[e+'_g2nom']=_gv('mses-'+e+'-g2nom');sesion[e+'_g2desc']=_gv('mses-'+e+'-g2desc');sesion[e+'_g2prov']=_gv('mses-'+e+'-g2prov');sesion[e+'_g2on']=!!(sesion[e+'_g2nom']||sesion[e+'_g2desc']||sesion[e+'_g2prov']);});
-  if(editSesLibreId){const _o=SES_LIBRES.find(x=>x.id===editSesLibreId);if(_o)Object.keys(_o).forEach(k=>{if(/_g2dib$/.test(k))sesion[k]=_o[k];});}
+  {const _d=window._msesDib||{};sesion.cal_g2dib=_d[10]||'';sesion.ej1_g2dib=_d[11]||'';sesion.ej2_g2dib=_d[12]||'';sesion.ej3_g2dib=_d[13]||'';}
   if(editSesLibreId){const idx=SES_LIBRES.findIndex(x=>x.id===editSesLibreId);if(idx!==-1)SES_LIBRES[idx]=sesion;}
   else{SES_LIBRES.unshift(sesion);}
   saveSesLibres();
@@ -4765,7 +4767,7 @@ function abrirPickerBib(modo,n){
   ov.style.display='flex';
   ov.innerHTML=`<div style="background:white;border-radius:14px;width:100%;max-width:560px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden">
     <div style="padding:14px 16px;border-bottom:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center">
-      <div style="font-weight:800;font-size:15px">📚 Elegir ejercicio de la biblioteca <span style="font-weight:600;font-size:11px;color:#94A3B8">→ ${n===0?'Calentamiento':'Ejercicio '+n}${modo==='ses2'?' · 👥 Grupo 2':''}</span></div>
+      <div style="font-weight:800;font-size:15px">📚 Elegir ejercicio de la biblioteca <span style="font-weight:600;font-size:11px;color:#94A3B8">→ ${n===0?'Calentamiento':'Ejercicio '+n}${(modo==='ses2'||modo==='mses2')?' · 👥 Grupo 2':''}</span></div>
       <button onclick="cerrarPickerBib()" style="border:none;background:none;font-size:18px;cursor:pointer;color:#64748B">✕</button>
     </div>
     <div style="padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid #F1F5F9">
@@ -4809,6 +4811,12 @@ function elegirDeBib(i){
       if(c){if((c.value||'').trim()&&!confirm('Se sustituirá el calentamiento actual por «'+nom+'».\n¿Continuar?'))return;c.value=textoCal;}
       const m=document.getElementById('mses-material');
       if(m&&mat&&!(m.value||'').toLowerCase().includes(mat.toLowerCase()))m.value=(m.value?m.value+', ':'')+mat;
+    }else if(modo==='mses2'){
+      const c=document.getElementById('mses-cal-g2desc');
+      if(c){if((c.value||'').trim()&&!confirm('Se sustituirá el calentamiento del Grupo 2 por «'+nom+'».\n¿Continuar?'))return;c.value=textoCal;}
+      (window._msesDib=window._msesDib||{})[10]=e.dibujo||'';etRefrescarMsesDib();
+      const m=document.getElementById('mses-material');
+      if(m&&mat&&!(m.value||'').toLowerCase().includes(mat.toLowerCase()))m.value=(m.value?m.value+', ':'')+mat;
     }else if(modo==='ses2'){
       const s=SESIONES.find(x=>x.num===sesionAbierta);if(!s)return;
       if((s.cal_g2desc||'').trim()&&!confirm('Se sustituirá el calentamiento del Grupo 2 por «'+nom+'».\n¿Continuar?'))return;
@@ -4834,6 +4842,14 @@ function elegirDeBib(i){
     g('mses-ej'+n+'-desc').value=desc;
     g('mses-ej'+n+'-prov').value=prov;
     (window._msesDib=window._msesDib||{})[n]=e.dibujo||'';etRefrescarMsesDib();
+    const m=g('mses-material');
+    if(m&&mat&&!(m.value||'').toLowerCase().includes(mat.toLowerCase()))m.value=(m.value?m.value+', ':'')+mat;
+  }else if(modo==='mses2'){
+    const g=id=>document.getElementById(id);
+    const act=(g('mses-ej'+n+'-g2nom')?.value||'').trim();
+    if(act&&act!==nom&&!confirm(`Se sustituirá «${act}» por «${nom}» en el Grupo 2.\n¿Continuar?`))return;
+    g('mses-ej'+n+'-g2nom').value=nom;g('mses-ej'+n+'-g2desc').value=desc;g('mses-ej'+n+'-g2prov').value=prov;
+    (window._msesDib=window._msesDib||{})[10+n]=e.dibujo||'';etRefrescarMsesDib();
     const m=g('mses-material');
     if(m&&mat&&!(m.value||'').toLowerCase().includes(mat.toLowerCase()))m.value=(m.value?m.value+', ':'')+mat;
   }else if(modo==='ses2'){
@@ -5392,7 +5408,7 @@ function etGuardarEd(){
   etToast(json?'🎨 Dibujo guardado':'Dibujo eliminado');
 }
 function etRefrescarMsesDib(){
-  [[0,'mses-cal-dibprev'],[1,'mses-ej1-dibprev'],[2,'mses-ej2-dibprev'],[3,'mses-ej3-dibprev'],[4,'mses-partido-dibprev'],[5,'mses-vuelta-dibprev']].forEach(([n,pid])=>{const el=document.getElementById(pid);if(el){const j=(window._msesDib||{})[n]||'';el.innerHTML=j?etImgHTML(j)+`<button type="button" onclick="(window._msesDib=window._msesDib||{})[${n}]='';etRefrescarMsesDib()" style="border:none;background:none;color:#B91C1C;font-size:11px;cursor:pointer;margin-top:3px">Quitar dibujo</button>`:'';}});
+  [[0,'mses-cal-dibprev'],[1,'mses-ej1-dibprev'],[2,'mses-ej2-dibprev'],[3,'mses-ej3-dibprev'],[4,'mses-partido-dibprev'],[5,'mses-vuelta-dibprev'],[10,'mses-cal-g2dibprev'],[11,'mses-ej1-g2dibprev'],[12,'mses-ej2-g2dibprev'],[13,'mses-ej3-g2dibprev']].forEach(([n,pid])=>{const el=document.getElementById(pid);if(el){const j=(window._msesDib||{})[n]||'';el.innerHTML=j?etImgHTML(j)+`<button type="button" onclick="(window._msesDib=window._msesDib||{})[${n}]='';etRefrescarMsesDib()" style="border:none;background:none;color:#B91C1C;font-size:11px;cursor:pointer;margin-top:3px">Quitar dibujo</button>`:'';}});
 }
 
 // ───────────────────────── REORDENAR ARRASTRANDO ─────────────────────────
@@ -5440,10 +5456,10 @@ function etSoltar(kind,src,dst){
     etMoverEj(s,+as,+ad,['nom','desc','prov','dib','min','g2on','g2nom','g2desc','g2prov','g2dib']);
     save("sesiones",SESIONES);renderSesionDetalle();
   }else if(kind==='mej'){
-    const a=+src,b=+dst,F=['nom','desc','prov','min'];
-    const vals=[1,2,3].map(n=>{const o={};F.forEach(f=>{o[f]=(document.getElementById(`mses-ej${n}-${f}`)||{}).value||'';});o.dib=(window._msesDib||{})[n]||'';return o;});
+    const a=+src,b=+dst,F=['nom','desc','prov','min','g2nom','g2desc','g2prov'];
+    const vals=[1,2,3].map(n=>{const o={};F.forEach(f=>{o[f]=(document.getElementById(`mses-ej${n}-${f}`)||{}).value||'';});o.dib=(window._msesDib||{})[n]||'';o.dib2=(window._msesDib||{})[10+n]||'';return o;});
     const it=vals.splice(a-1,1)[0];vals.splice(b-1,0,it);
-    vals.forEach((o,i)=>{const n=i+1;F.forEach(f=>{const el=document.getElementById(`mses-ej${n}-${f}`);if(el)el.value=o[f];});(window._msesDib=window._msesDib||{})[n]=o.dib;});
+    vals.forEach((o,i)=>{const n=i+1;F.forEach(f=>{const el=document.getElementById(`mses-ej${n}-${f}`);if(el)el.value=o[f];});(window._msesDib=window._msesDib||{})[n]=o.dib;window._msesDib[10+n]=o.dib2;});
     etRefrescarMsesDib();
   }else if(kind==='ses'){
     etIntercambiarSesiones(+src,+dst);
