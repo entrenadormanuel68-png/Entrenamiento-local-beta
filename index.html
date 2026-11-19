@@ -3539,6 +3539,9 @@ function renderSesLibreDetalle(){
       ${prov?`<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:6px;padding:7px 10px"><div style="font-size:9px;font-weight:700;color:#C2410C;text-transform:uppercase;margin-bottom:2px">🎯 Regla de Provocación</div><p style="font-size:12px;color:#C2410C;font-style:italic;margin:0">${prov}</p></div>`:''}
     ${s['ej'+n+'_dib']?etImgHTML(s['ej'+n+'_dib']):''}
     </div>`:'';
+  const g2Box=(tit,nom,desc,prov)=>`<div style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:10px;padding:13px;margin-top:8px"><div style="font-size:10px;font-weight:700;color:#6D28D9;text-transform:uppercase;margin-bottom:5px">👥 ${tit} · Grupo 2</div>${nom?`<div style="font-weight:700;font-size:13px;color:#1e293b;margin-bottom:5px">${esc(nom)}</div>`:''}${desc?`<p style="font-size:12px;color:#475569;margin:0 0 6px;line-height:1.5;white-space:pre-line">${esc(desc)}</p>`:''}${prov?`<div style="font-size:12px;color:#C2410C">🎯 ${esc(prov)}</div>`:''}</div>`;
+  const ejG=n=>`<div>${ejBlock(s['ej'+n+'_nom'],s['ej'+n+'_desc'],s['ej'+n+'_prov'],s['ej'+n+'_min'],n)}${s['ej'+n+'_g2on']?g2Box('Ejercicio '+n,s['ej'+n+'_g2nom'],s['ej'+n+'_g2desc'],s['ej'+n+'_g2prov']):''}</div>`;
+  const calG2=s.cal_g2on&&s.cal_g2desc?g2Box('Calentamiento','',s.cal_g2desc,''):'';
   det.innerHTML=`
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="closeSesLibre()">← Mis Sesiones</button>
@@ -3562,12 +3565,12 @@ function renderSesLibreDetalle(){
       <div style="display:flex;align-items:center;margin-bottom:5px">
         <div style="font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:1px">🔥 Calentamiento</div>${mb(s.cal_min)}
       </div>
-      <p style="font-size:13px;color:#374151;margin:0">${s.calentamiento||''}</p>${s.cal_dib?etImgHTML(s.cal_dib):''}
+      <p style="font-size:13px;color:#374151;margin:0">${s.calentamiento||''}</p>${s.cal_dib?etImgHTML(s.cal_dib):''}${calG2}
     </div>
     <div class="g3" style="margin-bottom:12px">
-      ${ejBlock(s.ej1_nom,s.ej1_desc,s.ej1_prov,s.ej1_min,1)}
-      ${ejBlock(s.ej2_nom,s.ej2_desc,s.ej2_prov,s.ej2_min,2)}
-      ${ejBlock(s.ej3_nom,s.ej3_desc,s.ej3_prov,s.ej3_min,3)}
+      ${ejG(1)}
+      ${ejG(2)}
+      ${ejG(3)}
     </div>
     <div class="g2" style="margin-bottom:12px">
       ${s.partido?`<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:13px"><div style="display:flex;align-items:center;margin-bottom:5px"><div style="font-size:10px;font-weight:700;color:#2563EB;text-transform:uppercase">⚽ Partido Condicionado</div>${mb(s.partido_min)}</div><p style="font-size:13px;color:#1E3A5F;margin:0">${s.partido}</p>${s.partido_dib?etImgHTML(s.partido_dib):''}</div>`:''}
@@ -3597,16 +3600,27 @@ function sesLibreWA(id){
   if(s.sistema)txt+=`⚙️ Sistema: ${CLUB.sistema||s.sistema}\n`;
   txt+='\n';
   if(s.calentamiento)txt+=`🔥 *Calentamiento${s.cal_min?' ('+s.cal_min+' min)':''}:*\n${s.calentamiento}\n\n`;
-  if(s.ej1_nom)txt+=`1️⃣ *${s.ej1_nom}${s.ej1_min?' ('+s.ej1_min+' min)':''}*\n${s.ej1_desc||''}\n${s.ej1_prov?'🎯 '+s.ej1_prov:''}\n\n`;
-  if(s.ej2_nom)txt+=`2️⃣ *${s.ej2_nom}${s.ej2_min?' ('+s.ej2_min+' min)':''}*\n${s.ej2_desc||''}\n${s.ej2_prov?'🎯 '+s.ej2_prov:''}\n\n`;
-  if(s.ej3_nom)txt+=`3️⃣ *${s.ej3_nom}${s.ej3_min?' ('+s.ej3_min+' min)':''}*\n${s.ej3_desc||''}\n${s.ej3_prov?'🎯 '+s.ej3_prov:''}\n\n`;
+  txt+=g2WA(s,0);
+  if(s.ej1_nom)txt+=`1️⃣ *${s.ej1_nom}${s.ej1_min?' ('+s.ej1_min+' min)':''}*\n${s.ej1_desc||''}\n${s.ej1_prov?'🎯 '+s.ej1_prov:''}\n\n`+g2WA(s,1);
+  if(s.ej2_nom)txt+=`2️⃣ *${s.ej2_nom}${s.ej2_min?' ('+s.ej2_min+' min)':''}*\n${s.ej2_desc||''}\n${s.ej2_prov?'🎯 '+s.ej2_prov:''}\n\n`+g2WA(s,2);
+  if(s.ej3_nom)txt+=`3️⃣ *${s.ej3_nom}${s.ej3_min?' ('+s.ej3_min+' min)':''}*\n${s.ej3_desc||''}\n${s.ej3_prov?'🎯 '+s.ej3_prov:''}\n\n`+g2WA(s,3);
   if(s.partido)txt+=`⚽ *Partido${s.partido_min?' ('+s.partido_min+' min)':''}:* ${s.partido}\n`;
   if(s.vuelta)txt+=`🧘 *Vuelta a la calma${s.vuelta_min?' ('+s.vuelta_min+' min)':''}:* ${s.vuelta}\n`;
   if(s.material)txt+=`🎒 *Material:* ${s.material}`;
   window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
 }
 
+function msesG2Init(){
+  if(document.getElementById('mses-cal-g2desc'))return;
+  const st='width:100%;border:1px solid #DDD6FE;border-radius:7px;padding:7px 9px;font-size:12px;outline:none;font-family:inherit;background:#FAF8FF;box-sizing:border-box;margin-top:5px';
+  const lab='<div style="font-size:10px;font-weight:700;color:#6D28D9;margin-top:8px">👥 Grupo 2 (a la vez, opcional)</div>';
+  const c=document.getElementById('mses-cal-desc');
+  if(c)c.insertAdjacentHTML('afterend',lab+'<textarea id="mses-cal-g2desc" rows="2" placeholder="Calentamiento del Grupo 2…" style="'+st+';resize:none"></textarea>');
+  ['ej1','ej2','ej3'].forEach(e=>{const pr=document.getElementById('mses-'+e+'-prov');if(!pr)return;
+    pr.insertAdjacentHTML('afterend',lab+'<input id="mses-'+e+'-g2nom" placeholder="Nombre del ejercicio (Grupo 2)" style="'+st+'"><textarea id="mses-'+e+'-g2desc" rows="2" placeholder="Descripción (Grupo 2)…" style="'+st+';resize:none"></textarea><input id="mses-'+e+'-g2prov" placeholder="🎯 Provocación (Grupo 2, opcional)" style="'+st+'">');});
+}
 function openAddSesLibre(id){
+  msesG2Init();
   editSesLibreId=id||null;
   const s=id?SES_LIBRES.find(x=>x.id===id):null;
   const v=f=>s?(s[f]||''):'';
@@ -3625,6 +3639,8 @@ function openAddSesLibre(id){
   document.getElementById('mses-vuelta-desc').value=v('vuelta');
   document.getElementById('mses-vuelta-min').value=s?(s.vuelta_min||''):'';
   document.getElementById('mses-material').value=v('material');
+  document.getElementById('mses-cal-g2desc').value=v('cal_g2desc');
+  ['ej1','ej2','ej3'].forEach(e=>['nom','desc','prov'].forEach(f=>{document.getElementById(`mses-${e}-g2${f}`).value=v(`${e}_g2${f}`);}));
   window._msesDib={0:v('cal_dib'),1:v('ej1_dib'),2:v('ej2_dib'),3:v('ej3_dib'),4:v('partido_dib'),5:v('vuelta_dib')};etRefrescarMsesDib();
 }
 
@@ -3656,6 +3672,9 @@ function guardarSesLibre(){
     notas:editSesLibreId?(SES_LIBRES.find(x=>x.id===editSesLibreId)?.notas||''):'',
     creadaEn:editSesLibreId?(SES_LIBRES.find(x=>x.id===editSesLibreId)?.creadaEn||Date.now()):Date.now()
   };
+  sesion.cal_g2desc=_gv('mses-cal-g2desc');sesion.cal_g2on=!!sesion.cal_g2desc;
+  ['ej1','ej2','ej3'].forEach(e=>{sesion[e+'_g2nom']=_gv('mses-'+e+'-g2nom');sesion[e+'_g2desc']=_gv('mses-'+e+'-g2desc');sesion[e+'_g2prov']=_gv('mses-'+e+'-g2prov');sesion[e+'_g2on']=!!(sesion[e+'_g2nom']||sesion[e+'_g2desc']||sesion[e+'_g2prov']);});
+  if(editSesLibreId){const _o=SES_LIBRES.find(x=>x.id===editSesLibreId);if(_o)Object.keys(_o).forEach(k=>{if(/_g2dib$/.test(k))sesion[k]=_o[k];});}
   if(editSesLibreId){const idx=SES_LIBRES.findIndex(x=>x.id===editSesLibreId);if(idx!==-1)SES_LIBRES[idx]=sesion;}
   else{SES_LIBRES.unshift(sesion);}
   saveSesLibres();
@@ -9238,7 +9257,7 @@ function pintarResumen(){
 wrap('renderResumen',pintarResumen);
 
 /* ───────── plantillas de sesión ───────── */
-var CAMPOS=['tema','objetivo','calentamiento','cal_min','ej1_nom','ej1_desc','ej1_prov','ej1_min','ej2_nom','ej2_desc','ej2_prov','ej2_min','ej3_nom','ej3_desc','ej3_prov','ej3_min','partido','partido_min','vuelta','vuelta_min','material','cal_dib','ej1_dib','ej2_dib','ej3_dib','partido_dib','vuelta_dib'];
+var CAMPOS=['tema','objetivo','calentamiento','cal_min','ej1_nom','ej1_desc','ej1_prov','ej1_min','ej2_nom','ej2_desc','ej2_prov','ej2_min','ej3_nom','ej3_desc','ej3_prov','ej3_min','partido','partido_min','vuelta','vuelta_min','material','cal_dib','ej1_dib','ej2_dib','ej3_dib','partido_dib','vuelta_dib','cal_g2on','cal_g2desc','cal_g2dib','ej1_g2on','ej1_g2nom','ej1_g2desc','ej1_g2prov','ej1_g2dib','ej2_g2on','ej2_g2nom','ej2_g2desc','ej2_g2prov','ej2_g2dib','ej3_g2on','ej3_g2nom','ej3_g2desc','ej3_g2prov','ej3_g2dib'];
 window.extSesDuplicar=function(id){
   var s=SES_LIBRES.find(function(x){return x.id===id;});if(!s)return;
   var c=JSON.parse(JSON.stringify(s));c.id='sl_'+Date.now();c.tema=(s.tema||'Sesión')+' (copia)';c.fecha='';c.notas='';c.creadaEn=Date.now();
@@ -9268,7 +9287,7 @@ window.extSesAplicar=function(id){
   var s=SES_LIBRES.find(function(x){return x.id===id;}),sel=document.getElementById('ext-apl-sel');if(!s||!sel)return;
   var t=SESIONES.find(function(x){return x.num===+sel.value;});if(!t)return;
   if(!confirm('¿Sustituir el contenido de la sesión '+String(t.num).padStart(3,'0')+' por esta plantilla?'))return;
-  CAMPOS.forEach(function(k){if(s[k]!==undefined&&s[k]!=='')t[k]=s[k];else if(/_dib$/.test(k))t[k]='';});
+  CAMPOS.forEach(function(k){if(s[k]!==undefined&&s[k]!=='')t[k]=s[k];else if(/_dib$/.test(k))t[k]='';else if(/_g2/.test(k))t[k]=/on$/.test(k)?false:'';});
   save('sesiones',SESIONES);
   var ov=document.getElementById('ext-apl-ov');if(ov)ov.remove();
   try{updateHeader();}catch(e){}
