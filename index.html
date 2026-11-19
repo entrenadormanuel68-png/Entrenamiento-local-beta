@@ -1919,7 +1919,7 @@ function aplicarConfigDias(){
   saveClub();
   // Preserve completed/notes from existing sessions
   const prevData={};
-  const CAMPOS_EDIT=['completada','notas','fechaReal','calentamiento','ej1_nom','ej1_desc','ej1_prov','ej2_nom','ej2_desc','ej2_prov','ej3_nom','ej3_desc','ej3_prov','partido','vuelta','material','estado','fechaOriginal','ej1_dib','ej2_dib','ej3_dib','cal_dib','partido_dib','vuelta_dib'];
+  const CAMPOS_EDIT=['completada','notas','fechaReal','calentamiento','ej1_nom','ej1_desc','ej1_prov','ej2_nom','ej2_desc','ej2_prov','ej3_nom','ej3_desc','ej3_prov','partido','vuelta','material','estado','fechaOriginal','ej1_dib','ej2_dib','ej3_dib','cal_dib','partido_dib','vuelta_dib','cal_g2on','cal_g2desc','cal_g2dib','ej1_g2on','ej1_g2nom','ej1_g2desc','ej1_g2prov','ej1_g2dib','ej2_g2on','ej2_g2nom','ej2_g2desc','ej2_g2prov','ej2_g2dib','ej3_g2on','ej3_g2nom','ej3_g2desc','ej3_g2prov','ej3_g2dib'];
   SESIONES.forEach(s=>{prevData[s.num]={};CAMPOS_EDIT.forEach(c=>{if(s[c]!==undefined)prevData[s.num][c]=s[c];});});
   SESIONES=genSesiones();
   // Try to restore data for matching session numbers
@@ -2782,7 +2782,7 @@ function renderSesionDetalle(){
   det.style.display="block";
   const s=SESIONES.find(x=>x.num===sesionAbierta);if(!s)return;
   const fi=FASES[s.fase];const tc=TIPO_C[s.tipo]||{};
-  const sendWA=()=>{const txt=`📋 *SESIÓN ${String(s.num).padStart(3,"0")} – ${s.tipo}*\n*${s.tema}*\n\n🎯 ${s.objetivo}\n\n🔥 *Calentamiento:*\n${s.calentamiento}\n\n1️⃣ *${s.ej1_nom}*\n${s.ej1_desc}\n🎯 ${s.ej1_prov}\n\n2️⃣ *${s.ej2_nom}*\n${s.ej2_desc}\n🎯 ${s.ej2_prov}\n\n3️⃣ *${s.ej3_nom}*\n${s.ej3_desc}\n🎯 ${s.ej3_prov}\n\n⚽ *Partido:* ${s.partido}\n🧘 *Vuelta calma:* ${s.vuelta}\n🎒 *Material:* ${s.material}`;window.open("https://wa.me/?text="+encodeURIComponent(txt),"_blank");};
+  const sendWA=()=>{const txt=`📋 *SESIÓN ${String(s.num).padStart(3,"0")} – ${s.tipo}*\n*${s.tema}*\n\n🎯 ${s.objetivo}\n\n🔥 *Calentamiento:*\n${s.calentamiento}${g2WA(s,0)}\n\n1️⃣ *${s.ej1_nom}*\n${s.ej1_desc}\n🎯 ${s.ej1_prov}${g2WA(s,1)}\n\n2️⃣ *${s.ej2_nom}*\n${s.ej2_desc}\n🎯 ${s.ej2_prov}${g2WA(s,2)}\n\n3️⃣ *${s.ej3_nom}*\n${s.ej3_desc}\n🎯 ${s.ej3_prov}${g2WA(s,3)}\n\n⚽ *Partido:* ${s.partido}\n🧘 *Vuelta calma:* ${s.vuelta}\n🎒 *Material:* ${s.material}`;window.open("https://wa.me/?text="+encodeURIComponent(txt),"_blank");};
   det.innerHTML=`
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="closeSes()">← Sesiones</button>
@@ -2804,14 +2804,15 @@ function renderSesionDetalle(){
       <div style="font-size:11px;color:${fi.c};margin-top:5px;font-weight:600">Sistema: ${CLUB.sistema||s.sistema}</div>
     </div>
     <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:14px;margin-bottom:12px">
-      <div style="font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center">🔥 Calentamiento<button onclick="abrirPickerBib('ses',0)" style="border:1px solid #BFDBFE;background:#EFF6FF;color:#2563EB;border-radius:5px;font-size:10px;font-weight:700;padding:2px 7px;cursor:pointer;text-transform:none">📚 Biblioteca</button></div>
+      <div style="font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center">🔥 Calentamiento${s.cal_g2on?' · 👥 Grupo 1':''}<button onclick="abrirPickerBib('ses',0)" style="border:1px solid #BFDBFE;background:#EFF6FF;color:#2563EB;border-radius:5px;font-size:10px;font-weight:700;padding:2px 7px;cursor:pointer;text-transform:none">📚 Biblioteca</button></div>
       <textarea rows="3" oninput="updSesField(${s.num},'calentamiento',this.value)" style="width:100%;border:1px solid #E2E8F0;border-radius:6px;padding:6px 9px;font-size:13px;color:#374151;background:transparent;outline:none;resize:vertical;font-family:inherit;box-sizing:border-box">${esc(s.calentamiento||"")}</textarea>
       ${etDibBloque('ses',s.num,0,s.cal_dib)}
+      ${etG2Seccion(s.num,0)}
     </div>
     <div class="g3" style="margin-bottom:12px">
       ${[[1,'ej1_nom','ej1_desc','ej1_prov'],[2,'ej2_nom','ej2_desc','ej2_prov'],[3,'ej3_nom','ej3_desc','ej3_prov']].map(([n,kn,kd,kp])=>`
         <div data-et-drop="1" data-et-kind="ej" data-et-key="${s.num}:${n}" style="background:white;border:1px solid #E2E8F0;border-radius:10px;padding:13px">
-          <div style="font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center"><span><span class="et-grip" data-et-kind="ej" title="Arrastra para cambiar el orden">⠿</span> Ejercicio ${n}</span><button onclick="abrirPickerBib('ses',${n})" style="border:1px solid #BFDBFE;background:#EFF6FF;color:#2563EB;border-radius:5px;font-size:10px;font-weight:700;padding:2px 7px;cursor:pointer;text-transform:none">📚 Biblioteca</button></div>
+          <div style="font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center"><span><span class="et-grip" data-et-kind="ej" title="Arrastra para cambiar el orden">⠿</span> Ejercicio ${n}${s['ej'+n+'_g2on']?' · 👥 Grupo 1':''}</span><button onclick="abrirPickerBib('ses',${n})" style="border:1px solid #BFDBFE;background:#EFF6FF;color:#2563EB;border-radius:5px;font-size:10px;font-weight:700;padding:2px 7px;cursor:pointer;text-transform:none">📚 Biblioteca</button></div>
           <input value="${esc(s[kn]||"")}" oninput="updSesField(${s.num},'${kn}',this.value)" placeholder="Nombre del ejercicio" style="width:100%;font-weight:700;font-size:13px;color:#1e293b;border:none;border-bottom:1px solid #E2E8F0;margin-bottom:6px;padding:2px 4px;outline:none;background:transparent;box-sizing:border-box;font-family:inherit">
           <textarea rows="3" oninput="updSesField(${s.num},'${kd}',this.value)" placeholder="Descripción…" style="width:100%;font-size:12px;color:#64748B;border:1px solid #E2E8F0;border-radius:5px;padding:5px 7px;margin-bottom:6px;outline:none;resize:vertical;font-family:inherit;box-sizing:border-box;line-height:1.5">${esc(s[kd]||"")}</textarea>
           <div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:6px;padding:7px 10px">
@@ -2819,6 +2820,7 @@ function renderSesionDetalle(){
             <textarea rows="2" oninput="updSesField(${s.num},'${kp}',this.value)" placeholder="Regla de provocación…" style="width:100%;font-size:12px;color:#C2410C;font-style:italic;border:none;border-bottom:1px dotted #FED7AA;outline:none;background:transparent;resize:none;font-family:inherit;box-sizing:border-box">${esc(s[kp]||"")}</textarea>
           </div>
           ${etDibBloque('ses',s.num,n,s['ej'+n+'_dib'])}
+          ${etG2Seccion(s.num,n)}
         </div>`).join("")}
     </div>
     <div class="g2" style="margin-bottom:12px">
@@ -2846,7 +2848,7 @@ function renderSesionDetalle(){
 }
 function sesWA(num){
   const s=SESIONES.find(x=>x.num===num);if(!s)return;
-  const txt=`📋 *SESIÓN ${String(s.num).padStart(3,"0")} – ${s.tipo}*\n*${s.tema}*\n\n🎯 ${s.objetivo}\n\n🔥 *Calentamiento:*\n${s.calentamiento}\n\n1️⃣ *${s.ej1_nom}*\n${s.ej1_desc}\n🎯 ${s.ej1_prov}\n\n2️⃣ *${s.ej2_nom}*\n${s.ej2_desc}\n🎯 ${s.ej2_prov}\n\n3️⃣ *${s.ej3_nom}*\n${s.ej3_desc}\n🎯 ${s.ej3_prov}\n\n⚽ *Partido:* ${s.partido}\n🧘 *Vuelta calma:* ${s.vuelta}\n🎒 *Material:* ${s.material}`;
+  const txt=`📋 *SESIÓN ${String(s.num).padStart(3,"0")} – ${s.tipo}*\n*${s.tema}*\n\n🎯 ${s.objetivo}\n\n🔥 *Calentamiento:*\n${s.calentamiento}${g2WA(s,0)}\n\n1️⃣ *${s.ej1_nom}*\n${s.ej1_desc}\n🎯 ${s.ej1_prov}${g2WA(s,1)}\n\n2️⃣ *${s.ej2_nom}*\n${s.ej2_desc}\n🎯 ${s.ej2_prov}${g2WA(s,2)}\n\n3️⃣ *${s.ej3_nom}*\n${s.ej3_desc}\n🎯 ${s.ej3_prov}${g2WA(s,3)}\n\n⚽ *Partido:* ${s.partido}\n🧘 *Vuelta calma:* ${s.vuelta}\n🎒 *Material:* ${s.material}`;
   window.open("https://wa.me/?text="+encodeURIComponent(txt),"_blank");
 }
 function toggleSesComp2(num){const s=SESIONES.find(x=>x.num===num);if(s){s.completada=!s.completada;save("sesiones",SESIONES);updateHeader();renderSesionDetalle();}}
@@ -4030,10 +4032,10 @@ function exportSesionCSV(num){
     ['Campo','Valor'],
     ['Número',s.num],['Semana',s.sem],['Fase',s.fase],['Tipo',s.tipo],['Tema',s.tema],
     ['Objetivo',s.objetivo],['Sistema',s.sistema],
-    ['Calentamiento',s.calentamiento],
-    ['Ejercicio 1',s.ej1_nom],['Descripción 1',s.ej1_desc],['Provocación 1',s.ej1_prov],
-    ['Ejercicio 2',s.ej2_nom],['Descripción 2',s.ej2_desc],['Provocación 2',s.ej2_prov],
-    ['Ejercicio 3',s.ej3_nom],['Descripción 3',s.ej3_desc],['Provocación 3',s.ej3_prov],
+    ['Calentamiento',s.calentamiento],...g2Csv(s,0),
+    ['Ejercicio 1',s.ej1_nom],['Descripción 1',s.ej1_desc],['Provocación 1',s.ej1_prov],...g2Csv(s,1),
+    ['Ejercicio 2',s.ej2_nom],['Descripción 2',s.ej2_desc],['Provocación 2',s.ej2_prov],...g2Csv(s,2),
+    ['Ejercicio 3',s.ej3_nom],['Descripción 3',s.ej3_desc],['Provocación 3',s.ej3_prov],...g2Csv(s,3),
     ['Partido/Juego',s.partido],['Vuelta a la calma',s.vuelta],['Material',s.material],
     ['Completada',s.completada?'Sí':'No'],['Notas',s.notas||''],['Fecha',fmtFecha(s.fechaReal||'')]
   ];
@@ -4744,7 +4746,7 @@ function abrirPickerBib(modo,n){
   ov.style.display='flex';
   ov.innerHTML=`<div style="background:white;border-radius:14px;width:100%;max-width:560px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden">
     <div style="padding:14px 16px;border-bottom:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center">
-      <div style="font-weight:800;font-size:15px">📚 Elegir ejercicio de la biblioteca <span style="font-weight:600;font-size:11px;color:#94A3B8">→ ${n===0?'Calentamiento':'Ejercicio '+n}</span></div>
+      <div style="font-weight:800;font-size:15px">📚 Elegir ejercicio de la biblioteca <span style="font-weight:600;font-size:11px;color:#94A3B8">→ ${n===0?'Calentamiento':'Ejercicio '+n}${modo==='ses2'?' · 👥 Grupo 2':''}</span></div>
       <button onclick="cerrarPickerBib()" style="border:none;background:none;font-size:18px;cursor:pointer;color:#64748B">✕</button>
     </div>
     <div style="padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid #F1F5F9">
@@ -4788,6 +4790,13 @@ function elegirDeBib(i){
       if(c){if((c.value||'').trim()&&!confirm('Se sustituirá el calentamiento actual por «'+nom+'».\n¿Continuar?'))return;c.value=textoCal;}
       const m=document.getElementById('mses-material');
       if(m&&mat&&!(m.value||'').toLowerCase().includes(mat.toLowerCase()))m.value=(m.value?m.value+', ':'')+mat;
+    }else if(modo==='ses2'){
+      const s=SESIONES.find(x=>x.num===sesionAbierta);if(!s)return;
+      if((s.cal_g2desc||'').trim()&&!confirm('Se sustituirá el calentamiento del Grupo 2 por «'+nom+'».\n¿Continuar?'))return;
+      s.cal_g2on=true;s.cal_g2desc=textoCal;
+      if(mat&&!(s.material||'').toLowerCase().includes(mat.toLowerCase()))s.material=(s.material?s.material+', ':'')+mat;
+      save("sesiones",SESIONES);
+      renderSesionDetalle();
     }else{
       const s=SESIONES.find(x=>x.num===sesionAbierta);if(!s)return;
       if((s.calentamiento||'').trim()&&!confirm('Se sustituirá el calentamiento de la sesión '+s.num+' por «'+nom+'».\n(Copia independiente: la biblioteca no cambia.)\n¿Continuar?'))return;
@@ -4808,6 +4817,14 @@ function elegirDeBib(i){
     (window._msesDib=window._msesDib||{})[n]=e.dibujo||'';etRefrescarMsesDib();
     const m=g('mses-material');
     if(m&&mat&&!(m.value||'').toLowerCase().includes(mat.toLowerCase()))m.value=(m.value?m.value+', ':'')+mat;
+  }else if(modo==='ses2'){
+    const s=SESIONES.find(x=>x.num===sesionAbierta);if(!s)return;
+    const act=(s['ej'+n+'_g2nom']||'').trim();
+    if(act&&act!==nom&&!confirm(`Se sustituirá «${act}» por «${nom}» en el Grupo 2 de la sesión ${s.num}.\n(Copia independiente: la biblioteca no cambia.)\n¿Continuar?`))return;
+    s['ej'+n+'_g2on']=true;s['ej'+n+'_g2nom']=nom;s['ej'+n+'_g2desc']=desc;s['ej'+n+'_g2prov']=prov;s['ej'+n+'_g2dib']=e.dibujo||'';
+    if(mat&&!(s.material||'').toLowerCase().includes(mat.toLowerCase()))s.material=(s.material?s.material+', ':'')+mat;
+    save("sesiones",SESIONES);
+    renderSesionDetalle();
   }else{
     const s=SESIONES.find(x=>x.num===sesionAbierta);if(!s)return;
     const act=(s['ej'+n+'_nom']||'').trim();
@@ -5141,14 +5158,55 @@ function etImgHTML(json){
 function etDibBloque(kind,id,n,json){
   const has=!!etParse(json);
   const b='border:1px solid #BFDBFE;background:#EFF6FF;color:#2563EB;border-radius:6px;font-size:11px;font-weight:700;padding:4px 9px;cursor:pointer;font-family:inherit';
-  return `<div style="margin-top:8px">${has?etImgHTML(json):''}<div style="display:flex;gap:6px;margin-top:6px"><button type="button" style="${b}" onclick="abrirDibujo('${kind}','${id}',${n})">🎨 ${has?'Editar dibujo':'Añadir dibujo'}</button>${kind==='ses'?`<button type="button" style="${b.replace('#BFDBFE','#DDD6FE').replace('#EFF6FF','#F5F3FF').replace('#2563EB','#6D28D9')}" onclick="abrirPickerPiz('ses',${n})">🎨 Usar una pizarra</button>`:''}</div></div>`;
+  return `<div style="margin-top:8px">${has?etImgHTML(json):''}<div style="display:flex;gap:6px;margin-top:6px"><button type="button" style="${b}" onclick="abrirDibujo('${kind}','${id}',${n})">🎨 ${has?'Editar dibujo':'Añadir dibujo'}</button>${(kind==='ses'||kind==='ses2')?`<button type="button" style="${b.replace('#BFDBFE','#DDD6FE').replace('#EFF6FF','#F5F3FF').replace('#2563EB','#6D28D9')}" onclick="abrirPickerPiz('${kind}',${n})">🎨 Usar una pizarra</button>`:''}</div></div>`;
 }
 var _etEd=null;
+// ───────────────────────── GRUPO 2 (trabajo simultáneo) ─────────────────────────
+// Opcional en Calentamiento y Ejercicios 1-3 de las sesiones del calendario. Sin «Añadir Grupo 2» la sesión no cambia.
+// Campos: cal_g2on/cal_g2desc/cal_g2dib y ejN_g2on/g2nom/g2desc/g2prov/g2dib. Comparte el tiempo del bloque.
+function g2Pref(n){return n===0?'cal_':'ej'+n+'_';}
+function g2Activar(num,n){const s=SESIONES.find(x=>x.num===num);if(!s)return;s[g2Pref(n)+'g2on']=true;save("sesiones",SESIONES);renderSesionDetalle();}
+function g2Quitar(num,n){
+  const s=SESIONES.find(x=>x.num===num);if(!s)return;
+  const p=g2Pref(n),tiene=['g2desc','g2nom','g2prov','g2dib'].some(f=>String(s[p+f]||'').trim());
+  if(tiene&&!confirm('Se borrará el Grupo 2 de este bloque (texto y dibujo).\n¿Continuar?'))return;
+  ['g2on','g2desc','g2nom','g2prov','g2dib'].forEach(f=>{delete s[p+f];});
+  save("sesiones",SESIONES);renderSesionDetalle();
+}
+function etG2Seccion(num,n){
+  const s=SESIONES.find(x=>x.num===num);if(!s)return '';
+  const p=g2Pref(n),bt='border:1px solid #DDD6FE;background:#F5F3FF;color:#6D28D9;border-radius:6px;font-size:11px;font-weight:700;padding:4px 9px;cursor:pointer;font-family:inherit';
+  if(!s[p+'g2on'])return `<div style="margin-top:8px"><button type="button" style="${bt}" onclick="g2Activar(${num},${n})">➕ Añadir Grupo 2 (a la vez)</button></div>`;
+  const ta='width:100%;border:1px solid #DDD6FE;border-radius:6px;padding:6px 9px;font-size:12px;color:#374151;background:white;outline:none;resize:vertical;font-family:inherit;box-sizing:border-box';
+  const cab=`<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap"><span style="font-size:10px;font-weight:800;color:#6D28D9;text-transform:uppercase">👥 Grupo 2 · a la vez que el Grupo 1</span><span style="display:flex;gap:5px"><button type="button" onclick="abrirPickerBib('ses2',${n})" style="border:1px solid #BFDBFE;background:#EFF6FF;color:#2563EB;border-radius:5px;font-size:10px;font-weight:700;padding:2px 7px;cursor:pointer">📚 Biblioteca</button><button type="button" onclick="g2Quitar(${num},${n})" style="border:1px solid #FECACA;background:#FEF2F2;color:#B91C1C;border-radius:5px;font-size:10px;font-weight:700;padding:2px 7px;cursor:pointer">✕ Quitar</button></span></div>`;
+  let cuerpo;
+  if(n===0){
+    cuerpo=`<textarea rows="3" oninput="updSesField(${num},'cal_g2desc',this.value)" placeholder="Calentamiento del Grupo 2…" style="${ta}">${esc(s.cal_g2desc||'')}</textarea>`;
+  }else{
+    cuerpo=`<input value="${esc(s[p+'g2nom']||'')}" oninput="updSesField(${num},'${p}g2nom',this.value)" placeholder="Nombre del ejercicio (Grupo 2)" style="${ta};font-weight:700;margin-bottom:6px;resize:none">
+      <textarea rows="3" oninput="updSesField(${num},'${p}g2desc',this.value)" placeholder="Descripción…" style="${ta};margin-bottom:6px">${esc(s[p+'g2desc']||'')}</textarea>
+      <textarea rows="2" oninput="updSesField(${num},'${p}g2prov',this.value)" placeholder="🎯 Regla de provocación…" style="${ta};color:#C2410C;font-style:italic">${esc(s[p+'g2prov']||'')}</textarea>`;
+  }
+  return `<div style="margin-top:10px;border:1px solid #DDD6FE;border-left:4px solid #7C3AED;background:#F5F3FF;border-radius:8px;padding:9px 10px">${cab}${cuerpo}${etDibBloque('ses2',num,n,s[p+'g2dib'])}</div>`;
+}
+function g2WA(s,n){
+  const p=g2Pref(n);if(!s[p+'g2on'])return '';
+  if(n===0)return s.cal_g2desc?`\n\n👥 *Calentamiento · Grupo 2:*\n${s.cal_g2desc}`:'';
+  const nom=s[p+'g2nom'];if(!nom&&!s[p+'g2desc'])return '';
+  return `\n\n👥 *Grupo 2: ${nom||''}*\n${s[p+'g2desc']||''}${s[p+'g2prov']?'\n🎯 '+s[p+'g2prov']:''}`;
+}
+function g2Csv(s,n){
+  const p=g2Pref(n);if(!s[p+'g2on'])return [];
+  if(n===0)return [['Calentamiento · Grupo 2',s.cal_g2desc||'']];
+  return [[`Ejercicio ${n} · Grupo 2`,s[p+'g2nom']||''],[`Descripción ${n} · Grupo 2`,s[p+'g2desc']||''],[`Provocación ${n} · Grupo 2`,s[p+'g2prov']||'']];
+}
 function etDibKey(n){n=+n;return n>=1&&n<=3?'ej'+n+'_dib':({0:'cal_dib',4:'partido_dib',5:'vuelta_dib'})[n];}
+function etDibKey2(n){n=+n;return n>=1&&n<=3?'ej'+n+'_g2dib':'cal_g2dib';}
 function abrirDibujo(kind,a,b){
   let json='';
   if(kind==='bib'){const e=BIBLIOTECA[+a];if(!e)return;json=e.dibujo||'';}
   else if(kind==='ses'){const s=SESIONES.find(x=>x.num===+a);if(!s)return;json=s[etDibKey(b)]||'';}
+  else if(kind==='ses2'){const s=SESIONES.find(x=>x.num===+a);if(!s)return;json=s[etDibKey2(b)]||'';}
   else if(kind==='mses'){json=(window._msesDib||{})[+a]||'';}
   else if(kind==='sf7'){json=window._sf7Dib||'';}
   else if(kind==='sg'){json=window._sgDib||'';}
@@ -5305,6 +5363,7 @@ function etGuardarEd(){
   const {kind,a,b}=_etEd;
   if(kind==='bib'){const e=BIBLIOTECA[+a];if(e){e.dibujo=json;save("biblioteca",BIBLIOTECA);renderBiblioteca();}}
   else if(kind==='ses'){const s=SESIONES.find(x=>x.num===+a);if(s){s[etDibKey(b)]=json;save("sesiones",SESIONES);renderSesionDetalle();}}
+  else if(kind==='ses2'){const s=SESIONES.find(x=>x.num===+a);if(s){s[etDibKey2(b)]=json;save("sesiones",SESIONES);renderSesionDetalle();}}
   else if(kind==='mses'){(window._msesDib=window._msesDib||{})[+a]=json;etRefrescarMsesDib();}
   else if(kind==='sf7'){window._sf7Dib=json;sf7RefrescarDib();}
   else if(kind==='sg'){window._sgDib=json;if(window.sgRefDib)window.sgRefDib();}
@@ -5359,7 +5418,7 @@ function etSoltar(kind,src,dst){
     const [ns,as]=src.split(':'),[nd,ad]=dst.split(':');
     if(ns!==nd)return;
     const s=SESIONES.find(x=>x.num===+ns);if(!s)return;
-    etMoverEj(s,+as,+ad,['nom','desc','prov','dib','min']);
+    etMoverEj(s,+as,+ad,['nom','desc','prov','dib','min','g2on','g2nom','g2desc','g2prov','g2dib']);
     save("sesiones",SESIONES);renderSesionDetalle();
   }else if(kind==='mej'){
     const a=+src,b=+dst,F=['nom','desc','prov','min'];
@@ -5376,7 +5435,7 @@ function etMoverEj(s,a,b,F){
   const it=items.splice(a-1,1)[0];items.splice(b-1,0,it);
   items.forEach((o,i)=>{F.forEach(f=>{if(o[f]===undefined)delete s[`ej${i+1}_${f}`];else s[`ej${i+1}_${f}`]=o[f];});});
 }
-var ET_CONT=['tema','objetivo','calentamiento','ej1_nom','ej1_desc','ej1_prov','ej1_dib','ej1_min','ej2_nom','ej2_desc','ej2_prov','ej2_dib','ej2_min','ej3_nom','ej3_desc','ej3_prov','ej3_dib','ej3_min','partido','vuelta','cal_dib','partido_dib','vuelta_dib','material','notas'];
+var ET_CONT=['tema','objetivo','calentamiento','ej1_nom','ej1_desc','ej1_prov','ej1_dib','ej1_min','ej2_nom','ej2_desc','ej2_prov','ej2_dib','ej2_min','ej3_nom','ej3_desc','ej3_prov','ej3_dib','ej3_min','partido','vuelta','cal_dib','partido_dib','vuelta_dib','material','notas','cal_g2on','cal_g2desc','cal_g2dib','ej1_g2on','ej1_g2nom','ej1_g2desc','ej1_g2prov','ej1_g2dib','ej2_g2on','ej2_g2nom','ej2_g2desc','ej2_g2prov','ej2_g2dib','ej3_g2on','ej3_g2nom','ej3_g2desc','ej3_g2prov','ej3_g2dib'];
 function etIntercambiarSesiones(na,nb){
   const A=SESIONES.find(x=>x.num===na),B=SESIONES.find(x=>x.num===nb);
   if(!A||!B||A===B)return;
@@ -5463,6 +5522,7 @@ async function sesionPDF(tipo,id){
   var dibPdf=function(dj){const dd=etParse(dj);if(!dd)return;const F=ET_FMT[dd.f],w=F.w>600?150:62,h=w*F.h/F.w;hay(h+3);const u=etDataURL(dj,900,'jpeg');if(u){doc.addImage(u,'JPEG',M+1,y,w,h);doc.setDrawColor(148,163,184);doc.rect(M+1,y,w,h);y+=h+3;}};
   titulo('CALENTAMIENTO'+mins(s.cal_min),194,65,12);
   parrafo(s.calentamiento||'-',10);dibPdf(s.cal_dib);
+  if(!esLibre&&s.cal_g2on&&(s.cal_g2desc||s.cal_g2dib)){parrafo('GRUPO 2',10,[109,40,217],true);parrafo(s.cal_g2desc||'-',10);dibPdf(s.cal_g2dib);}
   [1,2,3].forEach(n=>{
     const nom=s['ej'+n+'_nom'];if(!nom)return;
     titulo('EJERCICIO '+n+mins(s['ej'+n+'_min']),37,99,235);
@@ -5475,6 +5535,12 @@ async function sesionPDF(tipo,id){
       hay(h+3);
       const u=etDataURL(dj,900,'jpeg');
       if(u){doc.addImage(u,'JPEG',M+1,y,w,h);doc.setDrawColor(148,163,184);doc.rect(M+1,y,w,h);y+=h+3;}
+    }
+    if(!esLibre&&s['ej'+n+'_g2on']&&(s['ej'+n+'_g2nom']||s['ej'+n+'_g2desc']||s['ej'+n+'_g2dib'])){
+      parrafo('GRUPO 2: '+(s['ej'+n+'_g2nom']||''),11,[109,40,217],true);
+      if(s['ej'+n+'_g2desc'])parrafo(s['ej'+n+'_g2desc'],9.5);
+      if(s['ej'+n+'_g2prov'])parrafo('Regla de provocacion: '+s['ej'+n+'_g2prov'],9.5,[194,65,12],true);
+      dibPdf(s['ej'+n+'_g2dib']);
     }
   });
   if(s.partido){titulo('PARTIDO CONDICIONADO'+mins(s.partido_min),22,101,52);parrafo(s.partido,10);dibPdf(s.partido_dib);}
@@ -5842,6 +5908,10 @@ function elegirPizarra(id){
     const s=SESIONES.find(x=>x.num===sesionAbierta);if(!s)return;
     if(!pisa(s[etDibKey(n)]))return;
     s[etDibKey(n)]=dib;save("sesiones",SESIONES);renderSesionDetalle();
+  }else if(kind==='ses2'){
+    const s=SESIONES.find(x=>x.num===sesionAbierta);if(!s)return;
+    if(!pisa(s[etDibKey2(n)]))return;
+    s[etDibKey2(n)]=dib;save("sesiones",SESIONES);renderSesionDetalle();
   }else if(kind==='bib'){
     const e=BIBLIOTECA[n];if(!e)return;
     if(!pisa(e.dibujo))return;
