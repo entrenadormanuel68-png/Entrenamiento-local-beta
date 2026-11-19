@@ -3612,14 +3612,17 @@ function sesLibreWA(id){
 
 function msesG2Init(){
   if(document.getElementById('mses-cal-g2desc'))return;
-  const st='width:100%;border:1px solid #DDD6FE;border-radius:7px;padding:7px 9px;font-size:12px;outline:none;font-family:inherit;background:#FAF8FF;box-sizing:border-box;margin-top:5px';
-  const lab='<div style="font-size:10px;font-weight:700;color:#6D28D9;margin-top:10px;border-top:1px dashed #DDD6FE;padding-top:8px">👥 Grupo 2 (a la vez, opcional)</div>';
-  const bt=(m,k,t,c)=>'<button type="button" onclick="'+m+'" style="border:1px solid '+c[0]+';background:'+c[1]+';color:'+c[2]+';border-radius:6px;font-size:11px;font-weight:700;padding:4px 9px;cursor:pointer;margin-top:6px;margin-right:4px">'+t+'</button>';
-  const bar=k=>bt("abrirPickerBib('mses2',"+k+")",k,'📚 Biblioteca',['#DDD6FE','#F5F3FF','#6D28D9'])+bt("abrirDibujo('mses',"+(10+k)+")",k,'🎨 Dibujo',['#BBF7D0','#F0FDF4','#16A34A'])+bt("abrirPickerPiz('mses',"+(10+k)+")",k,'🎨 Usar una pizarra',['#DDD6FE','#F5F3FF','#6D28D9'])+'<div id="mses-'+(k?'ej'+k:'cal')+'-g2dibprev"></div>';
+  const st='width:100%;border:1px solid #C4B5FD;border-radius:7px;padding:7px 9px;font-size:12px;outline:none;font-family:inherit;background:white;box-sizing:border-box;margin-top:5px';
+  const bt=(m,t)=>'<button type="button" onclick="'+m+'" style="border:1px solid #C4B5FD;background:white;color:#6D28D9;border-radius:6px;font-size:11px;font-weight:700;padding:4px 9px;cursor:pointer;margin-top:6px;margin-right:4px">'+t+'</button>';
+  const box=(k,tit,campos)=>'<div class="mses-g2box" style="margin-top:14px;background:#F5F3FF;border:2px solid #A78BFA;border-radius:10px;padding:10px 12px"><div style="font-size:11px;font-weight:800;color:#6D28D9;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">👥 Grupo 2 · '+tit+' <span style="font-weight:600;text-transform:none;letter-spacing:0">(a la vez, opcional)</span></div>'+campos+'<div>'+bt("abrirPickerBib(\'mses2\',"+k+")",'📚 Biblioteca G2')+bt("abrirDibujo(\'mses\',"+(10+k)+")",'🎨 Dibujo G2')+bt("abrirPickerPiz(\'mses\',"+(10+k)+")",'🎨 Pizarra G2')+'</div><div id="mses-'+(k?'ej'+k:'cal')+'-g2dibprev"></div></div>';
+  const lab1='<div class="mses-g1lab" style="font-size:11px;font-weight:800;color:#C2410C;text-transform:uppercase;letter-spacing:.5px;margin:2px 0 6px">👤 Grupo 1</div>';
   const c=document.getElementById('mses-cal-desc');
-  if(c)c.insertAdjacentHTML('afterend',lab+'<textarea id="mses-cal-g2desc" rows="2" placeholder="Calentamiento del Grupo 2…" style="'+st+';resize:none"></textarea>'+bar(0));
-  ['ej1','ej2','ej3'].forEach(e=>{const pr=document.getElementById('mses-'+e+'-prov');if(!pr)return;
-    pr.insertAdjacentHTML('afterend',lab+'<input id="mses-'+e+'-g2nom" placeholder="Nombre del ejercicio (Grupo 2)" style="'+st+'"><textarea id="mses-'+e+'-g2desc" rows="2" placeholder="Descripción (Grupo 2)…" style="'+st+';resize:none"></textarea><input id="mses-'+e+'-g2prov" placeholder="🎯 Provocación (Grupo 2, opcional)" style="'+st+'">'+bar(+e.slice(2)));});
+  if(c&&c.parentElement){const par=c.parentElement;
+    const f=par.querySelector('button[onclick^="abrirPickerBib(\'mses\'"]');if(f)f.insertAdjacentHTML('beforebegin',lab1);
+    par.insertAdjacentHTML('beforeend',box(0,'Calentamiento','<textarea id="mses-cal-g2desc" rows="2" placeholder="Calentamiento del Grupo 2…" style="'+st+';resize:none"></textarea>'));}
+  ['ej1','ej2','ej3'].forEach(e=>{const pr=document.getElementById('mses-'+e+'-prov');if(!pr||!pr.parentElement)return;const par=pr.parentElement;
+    const f=par.querySelector('button[onclick^="abrirPickerBib(\'mses\'"]');if(f)f.insertAdjacentHTML('beforebegin',lab1);
+    par.insertAdjacentHTML('beforeend',box(+e.slice(2),'Ejercicio '+e.slice(2),'<input id="mses-'+e+'-g2nom" placeholder="Nombre del ejercicio (Grupo 2)" style="'+st+'"><textarea id="mses-'+e+'-g2desc" rows="2" placeholder="Descripción (Grupo 2)…" style="'+st+';resize:none"></textarea><input id="mses-'+e+'-g2prov" placeholder="🎯 Provocación (Grupo 2, opcional)" style="'+st+'">'));});
 }
 function openAddSesLibre(id){
   msesG2Init();
